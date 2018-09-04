@@ -1,0 +1,29 @@
+{
+    "name": "csgt/utils",
+    "description": "CSGT Utils",
+    "authors": [
+        {
+            "name": "CS",
+            "email": "software@cs.com.gt"
+        }
+    ],
+    "require": {
+        "php" : ">=7.0.0"
+    },
+    "autoload": {
+        "classmap": [
+            "src/Http/Middleware"
+        ],
+        "psr-4": {
+            "Csgt\\Utils\\": "src"
+        }
+    },
+    "minimum-stability" : "stable",
+     "extra": {
+        "laravel": {
+            "providers": [
+                "Csgt\\Utils\\UtilsServiceProvider"
+            ]
+        }
+    }
+}

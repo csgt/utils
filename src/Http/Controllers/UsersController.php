@@ -1,0 +1,137 @@
+<?php
+
+namespace {{namespace}}Http\Controllers\Catalogos;
+
+use Illuminate\Http\Request;
+
+use {{namespace}}Http\Requests;
+use Csgt\Crud\CrudController;
+use Cancerbero, Crypt, DB, Exception;
+use {{namespace}}Models\Authusuario;
+use {{namespace}}Models\Cancerbero\Authrol;
+use {{namespace}}Models\Cancerbero\Authusuariorol;
+
+class UsuariosController extends CrudController {
+	public function __construct() {
+		$this->setModelo(new Authusuario);
+		$this->setTitulo('Usuarios');
+
+		$this->setCampo(['nombre' =>'Nombre', 'campo' => 'nombre']);
+		$this->setCampo(['nombre' =>'Email', 'campo' => 'email']);
+		$this->setCampo(['nombre' =>'Creado', 'campo' => 'created_at', 'tipo'=>'datetime']);
+		$this->setCampo(['nombre' =>'Activo', 'campo' => 'activo', 'tipo'=>'bool']);
+
+		$this->setPermisos("\Cancerbero::tienePermisosCrud", 'usuarios');
+	}
+
+	public function edit(Request $request, $id) {
+		$data = [];
+		$usuarioroles = [];
+		$nombreUsuario = "Nuevo";
+
+		if ($id !== 0) {
+			$usuarioid = Crypt::decrypt($id);
+			$data = Authusuario::find($usuarioid);
+			$usuarioroles = Authusuariorol::where('usuarioid', $usuarioid)
+				->pluck('rolid')->toArray();
+			$nombreUsuario = $data->nombre;
+		}
+
+		$roles = Authrol::orderBy('nombre');
+
+		if(!Cancerbero::isGod()) {
+			$roles->where('rolid', '<>', config('csgtcancerbero.rolbackdoor'));
+		}
+		$roles = $roles->get();
+
+		$breadcrumb = '<ol class="breadcrumb">
+			<li>Catálogos</li>
+			<li><a href="/catalogos/usuarios">Usuarios</a></li>
+			<li class="active">' . $nombreUsuario . '</li>
+		</ol>';
+
+		return view('catalogos.usuarios.edit')
+			->with('templateincludes',['selectize','formvalidation'])
+			->with('template', config('csgtcomponents.template','layouts.app'))
+			->with('breadcrumb', $breadcrumb)
+			->with('roles', $roles)
+			->with('data', $data)
+			->with('usuarioroles', $usuarioroles)
+			->with('id', $id);
+	}
+
+	public function create(Request $request) {
+    return $this->edit($request, 0);
+	}
+
+	public function update(Request $request, $id) {
+		if($id !== 0) {
+			$usuarioid = Crypt::decrypt($id);
+			$usuario = Authusuario::find($usuarioid);
+		}
+		else {
+			$usuario = new Authusuario;
+		}
+
+		$usuario->nombre = $request->nombre;
+		$usuario->email = $request->email;
+		$pass = $request->password;
+
+		if ($pass)
+			$usuario->password = bcrypt($pass);
+
+		$usuario->activo =  ($request->activo?1:0);
+
+		//Ahora validamos si la password debe ser cambiada
+		if (config('csgtlogin.vencimiento.habilitado')) {
+			if(Input::has('vencimiento')) {
+				$usuario->{config('csgtlogin.vencimiento.campo')} = date_create();
+			}
+		}
+
+		$usuario->save();
+
+		$roles = $request->rolid;
+		if (!$roles) $roles = [];
+		//Borramos todos los roles actuales
+		Authusuariorol::where('usuarioid', $usuario->usuarioid)->delete();
+
+		foreach($roles as $rol) {
+			$ur = new Authusuariorol;
+			$ur->rolid = Crypt::decrypt($rol);
+			$ur->usuarioid = $usuario->usuarioid;
+			$ur->save();
+		}
+
+		return redirect()->route('catalogos.usuarios.index');
+	}
+
+	public function store(Request $request) {
+		return $this->update($request, 0);
+	}
+/*
+	public function destroy($aId) {
+
+		try{
+			if (Crud::getSoftDelete()){
+				$query = DB::table('authusuarios')
+					->where('usuarioid', Crypt::decrypt($aId))
+					->update(array('deleted_at'=>date_create(), config('csgtlogin.password.campo') =>''));
+			}
+			else
+				$query = DB::table('authusuarios')
+					->where('usuarioid', Crypt::decrypt($aId))
+					->delete();
+
+			Session::flash('message', 'Registro borrado exitosamente');
+			Session::flash('type', 'warning');
+
+		} catch (\Exception $e) {
+			Session::flash('message', 'Error al borrar campo. Revisar datos relacionados.');
+			Session::flash('type', 'danger');
+		}
+
+		return Redirect::to('/usuarios');
+	}
+*/
+}
