@@ -1,6 +1,5 @@
 <?php
-
-namespace Csgt\Components\Console;
+namespace Csgt\Utils\Console;
 
 use Illuminate\Console\Command;
 
@@ -9,7 +8,7 @@ class MakeDockerCommand extends Command
     protected $signature   = 'make:csgtdocker';
     protected $description = 'Crear configuraciones Docker';
     protected $directories = [
-        'dockerfiles'
+        'dockerfiles',
     ];
     protected $files = [
         'docker/docker-compose.yml.example.stub' => 'docker-compose.yml.example',
@@ -26,6 +25,7 @@ class MakeDockerCommand extends Command
     {
         if (is_dir(base_path('dockerfiles'))) {
             $this->error('Configuraciones docker ya fueron generadas anteriormente.');
+
             return;
         }
         $this->createDirectories();
@@ -36,7 +36,7 @@ class MakeDockerCommand extends Command
     protected function createDirectories()
     {
         foreach ($this->directories as $directory) {
-            if (! is_dir(base_path($directory))) {
+            if (!is_dir(base_path($directory))) {
                 mkdir(base_path($directory), 0755, true);
             }
         }
@@ -46,7 +46,7 @@ class MakeDockerCommand extends Command
     {
         foreach ($this->files as $origin => $destination) {
             copy(
-                __DIR__.'/stubs/make/'.$origin,
+                __DIR__ . '/stubs/make/' . $origin,
                 base_path($destination)
             );
         }

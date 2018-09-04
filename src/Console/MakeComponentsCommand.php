@@ -1,6 +1,5 @@
 <?php
-
-namespace Csgt\Components\Console;
+namespace Csgt\Utils\Console;
 
 use Illuminate\Console\Command;
 
@@ -14,7 +13,7 @@ class MakeComponentsCommand extends Command
 
     protected $controllers = [
         'Catalogos/RolesController',
-        'Catalogos/UsersController'
+        'Catalogos/UsersController',
     ];
 
     protected $models = [
@@ -22,8 +21,8 @@ class MakeComponentsCommand extends Command
     ];
 
     protected $langs = [
-        'es/usuario.stub'       => 'es/usuario.php',
-        'en/usuario.stub'       => 'en/usuario.php',
+        'es/usuario.stub' => 'es/usuario.php',
+        'en/usuario.stub' => 'en/usuario.php',
     ];
 
     public function handle()
@@ -41,7 +40,7 @@ class MakeComponentsCommand extends Command
     {
         foreach ($this->controllers as $controller) {
             file_put_contents(
-                app_path('Http/Controllers/'.$controller . '.php'),
+                app_path('Http/Controllers/' . $controller . '.php'),
                 $this->compileControllerStub($controller)
             );
         }
@@ -51,8 +50,8 @@ class MakeComponentsCommand extends Command
     {
         foreach ($this->views as $key => $value) {
             copy(
-                __DIR__.'/stubs/make/views/'.$key,
-                base_path('resources/views/'.$value)
+                __DIR__ . '/stubs/make/views/' . $key,
+                base_path('resources/views/' . $value)
             );
         }
     }
@@ -61,8 +60,8 @@ class MakeComponentsCommand extends Command
     {
         foreach ($this->langs as $key => $value) {
             copy(
-                __DIR__.'/stubs/make/lang/'.$key,
-                base_path('resources/lang/'.$value)
+                __DIR__ . '/stubs/make/lang/' . $key,
+                base_path('resources/lang/' . $value)
             );
         }
     }
@@ -71,7 +70,7 @@ class MakeComponentsCommand extends Command
     {
         foreach ($this->models as $modelName => $folder) {
             file_put_contents(
-                app_path('Models/'. ($folder<>''? $folder .'/':'') . $modelName . '.php'),
+                app_path('Models/' . ($folder != '' ? $folder . '/' : '') . $modelName . '.php'),
                 $this->compileModelStub($modelName)
             );
         }
@@ -79,23 +78,23 @@ class MakeComponentsCommand extends Command
 
     protected function createDirectories()
     {
-        if (! is_dir(app_path('Http/Controllers/Catalogos'))) {
+        if (!is_dir(app_path('Http/Controllers/Catalogos'))) {
             mkdir(app_path('Http/Controllers/Catalogos'), 0755, true);
         }
 
-        if (! is_dir(resource_path('views/catalogos/roles'))) {
+        if (!is_dir(resource_path('views/catalogos/roles'))) {
             mkdir(resource_path('views/catalogos/roles'), 0755, true);
         }
 
-        if (! is_dir(resource_path('views/catalogos/usuarios'))) {
+        if (!is_dir(resource_path('views/catalogos/usuarios'))) {
             mkdir(resource_path('views/catalogos/usuarios'), 0755, true);
         }
 
-        if (! is_dir(app_path('Models/Menu'))) {
+        if (!is_dir(app_path('Models/Menu'))) {
             mkdir(app_path('Models/Menu'), 0755, true);
         }
 
-        if (! is_dir(base_path('routes/core'))) {
+        if (!is_dir(base_path('routes/core'))) {
             mkdir(base_path('routes/core'), 0755, true);
         }
     }
@@ -105,7 +104,7 @@ class MakeComponentsCommand extends Command
         return str_replace(
             '{{namespace}}',
             $this->getAppNamespace(),
-            file_get_contents(__DIR__.'/stubs/make/controllers/' . $aPath . '.' . $aExtension)
+            file_get_contents(__DIR__ . '/stubs/make/controllers/' . $aPath . '.' . $aExtension)
         );
     }
 
@@ -114,7 +113,7 @@ class MakeComponentsCommand extends Command
         return str_replace(
             '{{namespace}}',
             $this->getAppNamespace(),
-            file_get_contents(__DIR__.'/stubs/make/models/' . $aModel . '.' . $aExtension)
+            file_get_contents(__DIR__ . '/stubs/make/models/' . $aModel . '.' . $aExtension)
         );
     }
 

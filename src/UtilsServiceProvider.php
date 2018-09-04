@@ -5,7 +5,7 @@ use Illuminate\Routing\Router;
 use Illuminate\Foundation\AliasLoader;
 use Illuminate\Support\ServiceProvider;
 
-class ComponentsServiceProvider extends ServiceProvider
+class UtilsServiceProvider extends ServiceProvider
 {
     protected $defer = false;
 
