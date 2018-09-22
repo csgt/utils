@@ -22,7 +22,7 @@ class Menu
     public function menuForRole()
     {
 
-        $userRoles = Auth::user()->getRoles();
+        $userRoles = Auth::user()->roleIds();
 
         $menus = MMenu::select('parent_id', 'id')->get();
 
@@ -32,8 +32,8 @@ class Menu
         }
 
         //Buscamos todos los permisos (sin parents) y agregamos los parents
-        $permissions = MMenu::select('m.id', DB::raw('coalesce(m.parent_id,0) AS parent_id'))
-            ->leftJoin('role_module_permissions AS rmp', 'rmp.id', '=', 'm.module_permission_id')
+        $permissions = MMenu::select('menu.id', DB::raw('coalesce(menu.parent_id,0) AS parent_id'))
+            ->leftJoin('role_module_permissions AS rmp', 'rmp.id', '=', 'menu.module_permission_id')
             ->leftJoin('module_permissions AS mp', 'mp.id', '=', 'rmp.module_permission_id')
             ->leftJoin('modules AS mo', 'mo.id', '=', 'mp.module_id')
             ->leftJoin('permissions AS p', 'p.id', '=', 'mp.permission_id')
@@ -50,14 +50,15 @@ class Menu
 
         //Ahora que ya tenemos todos los menuids que necesitamos, hacemos de nuevo el select IN
         $arr         = [];
-        $permissions = MMenu::select('m.name', DB::raw("CONCAT(mo.name,'.',p.name) AS ruta"),
-            'm.parent_id', 'm.id', 'm.icon')
+        $permissions = MMenu::select('menu.name', DB::raw("CONCAT(mo.name,'.',p.name) AS route"),
+            'menu.parent_id', 'menu.id', 'menu.icon')
+            ->leftJoin('role_module_permissions AS rmp', 'rmp.id', '=', 'menu.module_permission_id')
             ->leftJoin('module_permissions AS mp', 'mp.id', '=', 'rmp.module_permission_id')
             ->leftJoin('modules AS mo', 'mo.id', '=', 'mp.module_id')
             ->leftJoin('permissions AS p', 'p.id', '=', 'mp.permission_id')
-            ->whereIn('m.id', $this->menuIds)
-            ->orderBy('m.parent_id')
-            ->orderBy('m.order')
+            ->whereIn('menu.id', $this->menuIds)
+            ->orderBy('menu.parent_id')
+            ->orderBy('menu.order')
             ->get()
             ->map(function ($menu) {
                 return [

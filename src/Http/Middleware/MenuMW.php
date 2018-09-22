@@ -1,29 +1,28 @@
 <?php
-namespace Csgt\Components\Http\Middleware;
+namespace Csgt\Utils\Http\Middleware;
 
 use Closure;
-use Csgt\Components\Authmenu;
-use Menu;
-use Session;
-use Auth;
+use Csgt\Utils\Menu;
+use Csgt\Menu\Menu as MenuC;
 
 class MenuMW
 {
     public function handle($request, Closure $next)
     {
-        if (Auth::check()) {
-            if (!Session::has('menu-collection')) {
-                $elAuthMenu = new Authmenu;
-                $elAuthMenu->getMenuForRole();
+        if (auth()->check()) {
+            if (!session()->has('menu-collection')) {
+                $elAuthMenu = new Menu;
+                $elAuthMenu->menuForRole();
             }
-            $elMenu = new Menu;
-            $menuCollection = Session::get('menu-collection');
-            $route = $request->route()->getName();
-            $route = substr($route, 0, strrpos($route, '.')) . '.index';
+            $menu           = new MenuC;
+            $menuCollection = session()->get('menu-collection');
+            $route          = $request->route()->getName();
+            $route          = substr($route, 0, strrpos($route, '.')) . '.index';
 
-            Session::put('menu-selected', $route);
-            Session::put('menu', $elMenu->generarMenu($menuCollection));
+            session()->put('menu-selected', $route);
+            session()->put('menu', $menu->getMenu($menuCollection));
         }
+
         return $next($request);
     }
 }
