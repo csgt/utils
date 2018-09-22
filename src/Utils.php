@@ -1,8 +1,6 @@
 <?php
 namespace Csgt\Utils;
 
-use DB;
-use Auth;
 use Exception;
 use SoapClient;
 use Carbon\Carbon;
@@ -52,41 +50,6 @@ class Utils
 
     }
 
-    public static function getMenuForRole()
-    {
-
-        $usuarioroles = DB::table('authusuarioroles')
-            ->where('usuarioid', Auth::id())
-            ->lists('rolid');
-
-        $query = 'SELECT * FROM authmenu WHERE ruta IN (
-			SELECT
-				CONCAT(IF(m.nombre<>\'index\',m.nombre,\'/\'), IF(p.nombre<>\'index\',CONCAT(\'/\',p.nombre),\'\')) AS ruta
-			FROM
-				authrolmodulopermisos rmp
-				LEFT JOIN authmodulopermisos mp ON (mp.modulopermisoid=rmp.modulopermisoid)
-				LEFT JOIN authmodulos m ON (m.moduloid=mp.moduloid)
-				LEFT JOIN authpermisos p ON (p.permisoid=mp.permisoid)
-			WHERE
-				rmp.rolid IN(' . $usuarioroles . ')
-			)
-			OR menuid IN (
-			SELECT padreid FROM authmenu WHERE ruta IN (
-			SELECT
-			 CONCAT(IF(m.nombre<>\'index\',m.nombre,\'/\'), IF(p.nombre<>\'index\',CONCAT(\'/\',p.nombre),\'\')) AS ruta
-			FROM
-				authrolmodulopermisos rmp
-				LEFT JOIN authmodulopermisos mp ON (mp.modulopermisoid=rmp.modulopermisoid)
-				LEFT JOIN authmodulos m ON (m.moduloid=mp.moduloid)
-				LEFT JOIN authpermisos p ON (p.permisoid=mp.permisoid)
-			WHERE
-				rmp.rolid IN(' . $usuarioroles . ')
-			) AND padreid IS NOT NULL
-			) ORDER BY padreid, orden';
-
-        return DB::select(DB::raw($query));
-    }
-
     public static function fechaHumanoAMysql($aFecha, $aSeparador = '/')
     {
         $fh = explode(' ', $aFecha);
@@ -129,7 +92,7 @@ class Utils
         }
     }
 
-    public static function getTipoCambio()
+    public static function tipoCambio()
     {
         try {
             $soapClient = new SoapClient("http://www.banguat.gob.gt/variables/ws/TipoCambio.asmx?wsdl", ["trace" => 1]);

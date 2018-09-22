@@ -1,17 +1,12 @@
 <?php
+namespace Csgt\Utils\Http\Controllers;
 
-namespace {{namespace}}Http\Controllers\Catalogos;
-
-use Illuminate\Http\Request;
-
-use Csgt\Crud\CrudController;
-use Cancerbero;
 use Crypt;
-use DB;
 use Exception;
-use App\Models\Cancerbero\Role;
-use App\Models\Cancerbero\ModulePermission;
-use App\Models\Cancerbero\RoleModulePermission;
+use Cancerbero;
+use App\Models\Auth\Role;
+use Illuminate\Http\Request;
+use Csgt\Crud\CrudController;
 
 class RolesController extends CrudController
 {
@@ -20,16 +15,17 @@ class RolesController extends CrudController
         $this->setModelo(new Role);
         $this->setTitulo('Roles');
 
-        $this->setCampo(['nombre' =>'Nombre', 'campo' => 'name']);
-        $this->setCampo(['nombre' =>'Descripción', 'campo' => 'description']);
+        $this->setCampo(['nombre' => 'Nombre', 'campo' => 'name']);
+        $this->setCampo(['nombre' => 'Descripción', 'campo' => 'description']);
 
         $this->middleware(function ($request, $next) {
             if (!Cancerbero::isGod()) {
                 $this->setWhere('id', '<>', Cancerbero::getGodRol());
             }
+
             return $next($request);
         });
-        $this->setPermisos("\Cancerbero::tienePermisosCrud", 'catalogos.roles');
+        $this->setPermisos("\Cancerbero::crudPermissions", 'catalogos.roles');
     }
 
     public function create(Request $request)
@@ -50,12 +46,12 @@ class RolesController extends CrudController
         $roleName = 'Nuevo';
 
         $modulePermissions = Module::with(['module_permission.permission',
-            'role_module_permission' => function($query) use ($id) {
+            'role_module_permission' => function ($query) use ($id) {
                 return $query->where('role_id', $id);
-            }
+            },
         ])
-        ->orderBy('name')
-        ->get();
+            ->orderBy('name')
+            ->get();
 
         $role = Role::find($id);
 
@@ -73,7 +69,7 @@ class RolesController extends CrudController
             ->withTitle($this->title)
             ->withBreadcrumb($breadcrumb)
             ->withTemplate($this->layout)
-            ->withId(($id==0?0:Crypt::encrypt($id)))
+            ->withId(($id == 0 ? 0 : Crypt::encrypt($id)))
             ->withModulePermission($modulePermissions);
     }
 
@@ -85,14 +81,14 @@ class RolesController extends CrudController
     public function update(Request $request, $id)
     {
         if ($id !== 0) {
-            $rolid = Crypt::decrypt($request->id);
-            $rol = Authrol::find($rolid);
+            $rolid            = Crypt::decrypt($request->id);
+            $rol              = Authrol::find($rolid);
             $rol->nombre      = $request->nombre;
             $rol->descripcion = $request->descripcion;
             $rol->save();
             Authrolmodulopermiso::where('rolid', $rolid)->delete();
         } else {
-            $rol = new Authrol;
+            $rol              = new Authrol;
             $rol->nombre      = $request->nombre;
             $rol->descripcion = $request->descripcion;
             $rol->save();
@@ -103,8 +99,8 @@ class RolesController extends CrudController
 
         if ($modulopermisos) {
             foreach ($modulopermisos as $modulopermiso) {
-                $authmodulopermiso = new Authrolmodulopermiso;
-                $authmodulopermiso->rolid = $rolid;
+                $authmodulopermiso                  = new Authrolmodulopermiso;
+                $authmodulopermiso->rolid           = $rolid;
                 $authmodulopermiso->modulopermisoid = $modulopermiso;
                 $authmodulopermiso->save();
             }

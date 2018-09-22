@@ -14,21 +14,17 @@ class UtilsServiceProvider extends ServiceProvider
         AliasLoader::getInstance()->alias('CSGTMenu', 'Csgt\Utils\CSGTMenu');
         AliasLoader::getInstance()->alias('Utils', 'Csgt\Utils\Utils');
 
-        $this->mergeConfigFrom(__DIR__ . '/config/csgtutils.php', 'csgtutils');
         $this->loadViewsFrom(__DIR__ . '/resources/views/', 'csgtutils');
 
         $router->aliasMiddleware('menu', '\Csgt\Utils\Http\Middleware\MenuMW');
         $router->aliasMiddleware('god', '\Csgt\Utils\Http\Middleware\GodMW');
 
-        $this->publishes([
-            __DIR__ . '/config/csgtutils.php' => config_path('csgtutils.php'),
-        ], 'config');
     }
 
     public function register()
     {
         $this->commands([
-            Console\MakeComponentsCommand::class,
+            Console\MakeUtilsCommand::class,
         ]);
 
         $this->commands([

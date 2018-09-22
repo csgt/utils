@@ -1,4 +1,6 @@
-<?php namespace {{namespace}}Models\Menu;
+<?php
+
+namespace {{namespace}}Models\Menu;
 
 use Illuminate\Database\Eloquent\Model;
 

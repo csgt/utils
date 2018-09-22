@@ -3,17 +3,20 @@ namespace Csgt\Utils\Console;
 
 use Illuminate\Console\Command;
 
-class MakeComponentsCommand extends Command
+class MakeUtilsCommand extends Command
 {
-    protected $signature = 'make:csgtcomponents';
+    protected $signature = 'make:csgtutils';
 
-    protected $description = 'Vista components';
+    protected $description = 'CSGT Utils';
 
-    protected $views = [];
+    protected $views = [
+        'catalogs/roles/edit.stub' => 'catalogs/roles/edit.blade.php',
+        'catalogs/users/edit.stub' => 'catalogs/users/edit.blade.php',
+    ];
 
     protected $controllers = [
-        'Catalogos/RolesController',
-        'Catalogos/UsersController',
+        'Catalogs/RolesController',
+        'Catalogs/UsersController',
     ];
 
     protected $models = [
@@ -33,7 +36,7 @@ class MakeComponentsCommand extends Command
         $this->exportViews();
         $this->exportLangs();
 
-        $this->info('Vistas & Controladores para Components generadas correctamente.');
+        $this->info('Vistas & Controladores para Utils generadas correctamente.');
     }
 
     protected function exportControllers()
@@ -78,16 +81,16 @@ class MakeComponentsCommand extends Command
 
     protected function createDirectories()
     {
-        if (!is_dir(app_path('Http/Controllers/Catalogos'))) {
-            mkdir(app_path('Http/Controllers/Catalogos'), 0755, true);
+        if (!is_dir(app_path('Http/Controllers/Catalogs'))) {
+            mkdir(app_path('Http/Controllers/Catalogs'), 0755, true);
         }
 
-        if (!is_dir(resource_path('views/catalogos/roles'))) {
-            mkdir(resource_path('views/catalogos/roles'), 0755, true);
+        if (!is_dir(resource_path('views/catalogs/roles'))) {
+            mkdir(resource_path('views/catalogs/roles'), 0755, true);
         }
 
-        if (!is_dir(resource_path('views/catalogos/usuarios'))) {
-            mkdir(resource_path('views/catalogos/usuarios'), 0755, true);
+        if (!is_dir(resource_path('views/catalogs/users'))) {
+            mkdir(resource_path('views/catalogs/users'), 0755, true);
         }
 
         if (!is_dir(app_path('Models/Menu'))) {
