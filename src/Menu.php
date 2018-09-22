@@ -25,7 +25,6 @@ class Menu
         $userRoles = Auth::user()->roleIds();
 
         $menus = MMenu::select('parent_id', 'id')->get();
-
         //Guardamos un array de parents para solo abrir el dataset una vez
         foreach ($menus as $menu) {
             $this->parents[$menu->id] = (int) $menu->parent_id;
@@ -33,7 +32,7 @@ class Menu
 
         //Buscamos todos los permisos (sin parents) y agregamos los parents
         $permissions = MMenu::select('menu.id', DB::raw('coalesce(menu.parent_id,0) AS parent_id'))
-            ->leftJoin('role_module_permissions AS rmp', 'rmp.id', '=', 'menu.module_permission_id')
+            ->leftJoin('role_module_permissions AS rmp', 'rmp.module_permission_id', '=', 'menu.module_permission_id')
             ->leftJoin('module_permissions AS mp', 'mp.id', '=', 'rmp.module_permission_id')
             ->leftJoin('modules AS mo', 'mo.id', '=', 'mp.module_id')
             ->leftJoin('permissions AS p', 'p.id', '=', 'mp.permission_id')
@@ -52,7 +51,7 @@ class Menu
         $arr         = [];
         $permissions = MMenu::select('menu.name', DB::raw("CONCAT(mo.name,'.',p.name) AS route"),
             'menu.parent_id', 'menu.id', 'menu.icon')
-            ->leftJoin('role_module_permissions AS rmp', 'rmp.id', '=', 'menu.module_permission_id')
+            ->leftJoin('role_module_permissions AS rmp', 'rmp.module_permission_id', '=', 'menu.module_permission_id')
             ->leftJoin('module_permissions AS mp', 'mp.id', '=', 'rmp.module_permission_id')
             ->leftJoin('modules AS mo', 'mo.id', '=', 'mp.module_id')
             ->leftJoin('permissions AS p', 'p.id', '=', 'mp.permission_id')
