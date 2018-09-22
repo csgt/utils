@@ -15,13 +15,16 @@ class UsersController extends CrudController
     {
         $this->setModelo(new User);
         $this->setTitulo('Usuarios');
+        $this->setBreadCrumb([
+            ['url' => '', 'title' => 'Catálogos', 'icon' => 'fa fa-book'],
+            ['url' => '', 'title' => 'Usuarios', 'icon' => 'fa fa-user'],
+        ]);
 
-        $this->setCampo(['nombre' => 'Nombre', 'campo' => 'nombre']);
+        $this->setCampo(['nombre' => 'Nombre', 'campo' => 'name']);
         $this->setCampo(['nombre' => 'Email', 'campo' => 'email']);
         $this->setCampo(['nombre' => 'Creado', 'campo' => 'created_at', 'tipo' => 'datetime']);
-        $this->setCampo(['nombre' => 'Activo', 'campo' => 'activo', 'tipo' => 'bool']);
-
-        $this->setPermisos("\Cancerbero::crudPermissions", 'usuarios');
+        $this->setCampo(['nombre' => 'Activo', 'campo' => 'active', 'tipo' => 'bool']);
+        $this->setPermisos("\Cancerbero::crudPermissions", 'catalogos.usuarios');
     }
 
     public function edit(Request $request, $id)
