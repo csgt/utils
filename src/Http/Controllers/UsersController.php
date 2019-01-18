@@ -14,7 +14,7 @@ class UsersController extends CrudController
     public function __construct()
     {
         $this->setModelo(new User);
-        $this->setTitulo('Usuarios');
+        $this->setTitle('Usuarios');
         $this->setBreadCrumb([
             ['url' => '', 'title' => 'Catálogos', 'icon' => 'fa fa-book'],
             ['url' => '', 'title' => 'Usuarios', 'icon' => 'fa fa-user'],

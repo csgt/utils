@@ -2,9 +2,9 @@
 namespace Csgt\Utils\Http\Controllers;
 
 use Crypt;
-use Exception;
 use Cancerbero;
 use App\Models\Auth\Role;
+use App\Models\Auth\Module;
 use Illuminate\Http\Request;
 use Csgt\Crud\CrudController;
 
@@ -13,19 +13,59 @@ class RolesController extends CrudController
     public function __construct()
     {
         $this->setModelo(new Role);
-        $this->setTitulo('Roles');
+        $this->setTitle('Roles');
 
         $this->setCampo(['nombre' => 'Nombre', 'campo' => 'name']);
         $this->setCampo(['nombre' => 'Descripción', 'campo' => 'description']);
 
         $this->middleware(function ($request, $next) {
             if (!Cancerbero::isGod()) {
-                $this->setWhere('id', '<>', Cancerbero::getGodRol());
+                $this->setWhere('id', '<>', Cancerbero::godRole());
             }
 
             return $next($request);
         });
         $this->setPermisos("\Cancerbero::crudPermissions", 'catalogos.roles');
+    }
+
+    public function detail(Request $request, $id)
+    {
+        $rmpids = [];
+
+        if ($id != 0) {
+            $role = Role::with('role_module_permissions:id,role_id,module_permission_id')
+                ->findOrFail($id);
+
+            $rmpids = $role->role_module_permissions->map(function ($rmp) {
+                return $rmp->module_permission_id;
+            })->toArray();
+        }
+
+        $modules = Module::query()
+            ->with([
+                'modulepermissions',
+                'modulepermissions.permission' => function ($query) {
+                    $query->orderBy('name');
+                },
+            ])
+            ->orderBy('name')
+            ->get();
+
+        $modules = $modules->map(function ($module) use ($rmpids) {
+            $mp = $module->modulepermissions->map(function ($mp) use ($rmpids) {
+                $mp->enabled = in_array($mp->id, $rmpids);
+
+                return $mp;
+            });
+            $module->modulepermissions = $mp;
+
+            return $module;
+        });
+
+        return response()->json([
+            'role'    => $role,
+            'modules' => $modules,
+        ]);
     }
 
     public function create(Request $request)
@@ -35,42 +75,49 @@ class RolesController extends CrudController
 
     public function edit(Request $request, $id)
     {
-        if ($id !== 0) {
-            try {
-                $id = Crypt::decrypt($id);
-            } catch (Exception $e) {
-                abort(501, 'ID inválido');
-            }
-        }
-
-        $roleName = 'Nuevo';
-
-        $modulePermissions = Module::with(['module_permission.permission',
-            'role_module_permission' => function ($query) use ($id) {
-                return $query->where('role_id', $id);
-            },
-        ])
-            ->orderBy('name')
-            ->get();
-
-        $role = Role::find($id);
-
-        if ($id !== 0) {
-            $roleName = $role->name;
-        }
-        $breadcrumb = '<ol class="breadcrumb">
-            <li>Catálogos</li>
-            <li><a href="/catalogos/roles">Roles</a></li>
-            <li class="active">' . $roleName . '</li>
+        $breadcrumb = '<ol class="breadcrumb float-sm-right">
+            <li class="breadcrumb-item">Catálogos</li>
+            <li class="breadcrumb-item"><a href="/catalogos/roles">Roles</a></li>
+            <li class="breadcrumb-item active">Rol</li>
         </ol>';
 
-        return view('csgtcomponents::roles.edit')
-            ->withData($role)
-            ->withTitle($this->title)
+        return view('component')
+            ->withTitle($this->getTitle())
             ->withBreadcrumb($breadcrumb)
-            ->withTemplate($this->layout)
-            ->withId(($id == 0 ? 0 : Crypt::encrypt($id)))
-            ->withModulePermission($modulePermissions);
+            ->with('component', 'catalogs-roles-edit');
+
+        // if ($id !== 0) {
+        //     $id = Crypt::decrypt($id);
+        // }
+
+        // $roleName = 'Nuevo';
+
+        // // $modulePermissions = Module::with(['permissions',
+        // //     'role_module_permission' => function ($query) use ($id) {
+        // //         return $query->where('role_id', $id);
+        // //     },
+        // // ])
+        // //     ->orderBy('name')
+        // //     ->get();
+
+        // $role = Role::find($id);
+
+        // if ($id !== 0) {
+        //     $roleName = $role->name;
+        // }
+        // $breadcrumb = '<ol class="breadcrumb float-sm-right">
+        //     <li class="breadcrumb-item">Catálogos</li>
+        //     <li class="breadcrumb-item"><a href="/catalogos/roles">Roles</a></li>
+        //     <li class="breadcrumb-item active">' . $roleName . '</li>
+        // </ol>';
+
+        // return view('catalogs.roles.edit')
+        //     ->withData($role)
+        //     ->withTitle($this->getTitle())
+        //     ->withBreadcrumb($breadcrumb)
+        //     ->withTemplate($this->getLayout())
+        //     ->withId(($id == 0 ? 0 : Crypt::encrypt($id)));
+        // ->withModulePermission($modulePermissions);
     }
 
     public function store(Request $request)
