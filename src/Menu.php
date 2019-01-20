@@ -4,7 +4,7 @@ namespace Csgt\Utils;
 use DB;
 use Auth;
 use Session;
-use App\Models\Menu as MMenu;
+use App\Models\Menu\Menu as MMenu;
 
 class Menu
 {
@@ -31,8 +31,8 @@ class Menu
         }
 
         //Buscamos todos los permisos (sin parents) y agregamos los parents
-        $permissions = MMenu::select('menu.id', DB::raw('coalesce(menu.parent_id,0) AS parent_id'))
-            ->leftJoin('role_module_permissions AS rmp', 'rmp.module_permission_id', '=', 'menu.module_permission_id')
+        $permissions = MMenu::select('menus.id', DB::raw('coalesce(menus.parent_id,0) AS parent_id'))
+            ->leftJoin('role_module_permissions AS rmp', 'rmp.module_permission_id', '=', 'menus.module_permission_id')
             ->leftJoin('module_permissions AS mp', 'mp.id', '=', 'rmp.module_permission_id')
             ->leftJoin('modules AS mo', 'mo.id', '=', 'mp.module_id')
             ->leftJoin('permissions AS p', 'p.id', '=', 'mp.permission_id')
@@ -49,15 +49,15 @@ class Menu
 
         //Ahora que ya tenemos todos los menuids que necesitamos, hacemos de nuevo el select IN
         $arr         = [];
-        $permissions = MMenu::select('menu.name', DB::raw("CONCAT(mo.name,'.',p.name) AS route"),
-            'menu.parent_id', 'menu.id', 'menu.icon')
-            ->leftJoin('role_module_permissions AS rmp', 'rmp.module_permission_id', '=', 'menu.module_permission_id')
+        $permissions = MMenu::select('menus.name', DB::raw("CONCAT(mo.name,'.',p.name) AS route"),
+            'menus.parent_id', 'menus.id', 'menus.icon')
+            ->leftJoin('role_module_permissions AS rmp', 'rmp.module_permission_id', '=', 'menus.module_permission_id')
             ->leftJoin('module_permissions AS mp', 'mp.id', '=', 'rmp.module_permission_id')
             ->leftJoin('modules AS mo', 'mo.id', '=', 'mp.module_id')
             ->leftJoin('permissions AS p', 'p.id', '=', 'mp.permission_id')
-            ->whereIn('menu.id', $this->menuIds)
-            ->orderBy('menu.parent_id')
-            ->orderBy('menu.order')
+            ->whereIn('menus.id', $this->menuIds)
+            ->orderBy('menus.parent_id')
+            ->orderBy('menus.order')
             ->get()
             ->map(function ($menu) {
                 return [
