@@ -20,8 +20,8 @@ class UsersController extends CrudController {
 
 		$this->setField(['name' => 'Nombre', 'field' => 'name']);
 		$this->setField(['name' => 'Email', 'field' => 'email']);
-		$this->setField(['name' => 'Creado', 'field' => 'created_at', 'tipo' => 'datetime']);
-		$this->setField(['name' => 'Activo', 'field' => 'active', 'tipo' => 'bool']);
+		$this->setField(['name' => 'Creado', 'field' => 'created_at', 'type' => 'datetime']);
+		$this->setField(['name' => 'Activo', 'field' => 'active', 'type' => 'bool']);
 		$this->setPermisions("\Cancerbero::crudPermissions", 'catalogs.users');
 	}
 
