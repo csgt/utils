@@ -23,7 +23,7 @@ class RolesController extends CrudController {
 
 			return $next($request);
 		});
-		$this->setPermissions("\Cancerbero::crudPermissions", 'catalogos.roles');
+		$this->setPermissions("\Cancerbero::crudPermissions", 'catalogs.roles');
 	}
 
 	public function detail(Request $request, $id) {
