@@ -56,13 +56,14 @@ class Handler extends ExceptionHandler
                 }
                 break;
             default:
+                if (!$request->expectsJson()) {
+                    return parent::render($request, $e);
+                }
                 $message = ($message ? $message : __('Invalid Operation'));
                 $retval  = $this->errorResponse($request, $message, 400);
         }
 
         return $retval;
-
-        return parent::render($request, $e);
     }
 
     protected function errorResponse($request, $message, $statusCode = 400)
