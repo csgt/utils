@@ -56,7 +56,6 @@ class Menu
             ->leftJoin('modules AS mo', 'mo.id', '=', 'mp.module_id')
             ->leftJoin('permissions AS p', 'p.id', '=', 'mp.permission_id')
             ->whereIn('menus.id', $this->menuIds)
-            ->whereIn('rmp.role_id', $userRoles)
             ->orderBy('menus.parent_id')
             ->orderBy('menus.order')
             ->get()
@@ -70,7 +69,7 @@ class Menu
                 ];
             });
 
-        Session::put('menu-collection', collect($permissions));
+        Session::put('menu-collection', collect($permissions->unique()));
     }
 
 }
