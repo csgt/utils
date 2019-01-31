@@ -18,7 +18,6 @@ class MakeDockerCommand extends Command
         'docker/dockerfiles/nginx.docker.stub'   => 'dockerfiles/nginx.docker',
         'docker/dockerfiles/vhost.conf.stub'     => 'dockerfiles/vhost.conf',
         'docker/dockerfiles/my.cnf.stub'         => 'dockerfiles/my.cnf',
-        'docker/dockerfiles/init.sh.stub'        => 'dockerfiles/init.sh',
     ];
 
     public function handle()

@@ -1,4 +1,4 @@
-FROM nginx:1.13
+FROM nginx:1.14
 
 ADD ./dockerfiles/vhost.conf /etc/nginx/conf.d/default.conf
 WORKDIR /var/www
