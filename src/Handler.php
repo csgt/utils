@@ -19,7 +19,7 @@ class Handler extends ExceptionHandler
 
     public function render($request, Exception $e)
     {
-        //return parent::render($request, $e);
+        return parent::render($request, $e);
         $message = $e->getMessage();
         switch (true) {
             case $e instanceof AuthenticationException:
