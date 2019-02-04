@@ -79,7 +79,7 @@ class RolesController extends CrudController
     {
         $breadcrumb = '<ol class="breadcrumb float-sm-right">
             <li class="breadcrumb-item">Catálogos</li>
-            <li class="breadcrumb-item"><a href="/catalogos/roles">Roles</a></li>
+            <li class="breadcrumb-item"><a href="/catalogs/roles">Roles</a></li>
             <li class="breadcrumb-item active">Rol</li>
         </ol>';
 
