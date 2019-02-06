@@ -6,7 +6,7 @@ RUN echo 'alias seed="php artisan db:seed"' >> ~/.bashrc
 RUN echo 'alias seedgod="php artisan db:seed --class=GodSeeder"' >> ~/.bashrc
 RUN echo 'alias cda="composer dump-autoload"' >> ~/.bashrc
 
-RUN apt-get update && apt-get install -y libmcrypt-dev mysql-client \
-    && docker-php-ext-install mcrypt pdo_mysql
+RUN apt-get update && apt-get install -y mysql-client \
+    && docker-php-ext-install pdo_mysql
 
 WORKDIR /var/www
