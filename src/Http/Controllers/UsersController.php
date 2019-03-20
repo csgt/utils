@@ -62,7 +62,7 @@ class UsersController extends CrudController
 
         $roles = Role::orderBy('name');
         if (!Cancerbero::isGod()) {
-            $roles->setWhere('id', '<>', Cancerbero::godRole());
+            $roles->where('id', '<>', Cancerbero::godRole());
         }
         $roles = $roles->get();
 
