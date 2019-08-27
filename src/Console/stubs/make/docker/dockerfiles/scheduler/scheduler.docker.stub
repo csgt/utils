@@ -1,0 +1,11 @@
+FROM php:7.2
+
+RUN apt-get update && apt-get install -y mariadb-client libxml2-dev zlib1g-dev \
+    && docker-php-ext-install pdo_mysql soap simplexml zip
+
+COPY dockerfiles/scheduler/scheduler.sh /opt/bin/entrypoint.sh
+RUN chmod +x /opt/bin/entrypoint.sh
+
+CMD ["/opt/bin/entrypoint.sh"]
+
+WORKDIR /var/www

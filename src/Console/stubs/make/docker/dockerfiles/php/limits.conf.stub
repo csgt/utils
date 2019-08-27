@@ -1,0 +1,7 @@
+[www]
+php_admin_value[memory_limit] = 76000M
+php_admin_value[max_execution_time] = 6800
+php_admin_value[max_input_time] = 3600
+php_admin_value[post_max_size] = 2048M
+php_admin_value[upload_max_filesize] = 2048M
+php_admin_value[memory_limit] = 76000M

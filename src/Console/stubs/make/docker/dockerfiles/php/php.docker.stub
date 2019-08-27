@@ -6,7 +6,10 @@ RUN echo 'alias seed="php artisan db:seed"' >> ~/.bashrc
 RUN echo 'alias seedgod="php artisan db:seed --class=GodSeeder"' >> ~/.bashrc
 RUN echo 'alias cda="composer dump-autoload"' >> ~/.bashrc
 
-RUN apt-get update && apt-get install -y mysql-client \
-    && docker-php-ext-install pdo_mysql
+RUN apt-get update && apt-get install -y mariadb-client libxml2-dev zlib1g-dev libpng-dev \
+    && rm -rf /var/lib/apt/lists/* \
+    && docker-php-ext-install pdo_mysql soap simplexml zip gd
+
+ADD ./dockerfiles/php/limits.conf /usr/local/etc/php-fpm.d/limits.conf
 
 WORKDIR /var/www
