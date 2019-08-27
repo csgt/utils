@@ -9,6 +9,12 @@ class MakeDockerCommand extends Command
     protected $description = 'Crear configuraciones Docker';
     protected $directories = [
         'dockerfiles',
+        'dockerfiles/horizon',
+        'dockerfiles/mysql',
+        'dockerfiles/nginx',
+        'dockerfiles/php',
+        'dockerfiles/redis',
+        'dockerfiles/scheduler',
     ];
     protected $files = [
         'docker/docker-compose.yml.example.stub'             => 'docker-compose.yml.example',
