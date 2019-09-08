@@ -3,7 +3,7 @@
         <div class="card-header">
             {{module.description}}
             <div class="card-tools">
-                <button type="button" class="btn btn-tool" data-widget="collapse"><i class="fa fa-minus"></i>
+                <button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fa fa-minus"></i>
                 </button>
             </div>
         </div>
