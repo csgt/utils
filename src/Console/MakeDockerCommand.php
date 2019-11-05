@@ -6,7 +6,7 @@ use Illuminate\Console\Command;
 class MakeDockerCommand extends Command
 {
     protected $signature   = 'make:csgtdocker';
-    protected $description = 'Crear configuraciones Docker';
+    protected $description = 'Create docker configurations';
     protected $directories = [
         'dockerfiles',
         'dockerfiles/horizon',
@@ -25,8 +25,10 @@ class MakeDockerCommand extends Command
         'docker/dockerfiles/mysql/my.cnf.stub'               => 'dockerfiles/mysql/my.cnf',
         'docker/dockerfiles/nginx/nginx.docker.stub'         => 'dockerfiles/nginx/nginx.docker',
         'docker/dockerfiles/nginx/vhost.conf.stub'           => 'dockerfiles/nginx/vhost.conf',
+        'docker/dockerfiles/nginx/gzip.conf.stub'            => 'dockerfiles/nginx/gzip.conf',
         'docker/dockerfiles/php/php.docker.stub'             => 'dockerfiles/php/php.docker',
         'docker/dockerfiles/php/limits.conf.stub'            => 'dockerfiles/php/limits.conf',
+        'docker/dockerfiles/php/opcache.conf.stub'           => 'dockerfiles/php/opcache.conf',
         'docker/dockerfiles/redis/redis.docker.stub'         => 'dockerfiles/redis/redis.docker',
         'docker/dockerfiles/scheduler/scheduler.docker.stub' => 'dockerfiles/scheduler/scheduler.docker',
         'docker/dockerfiles/scheduler/scheduler.sh.stub'     => 'dockerfiles/scheduler/scheduler.sh',
@@ -35,13 +37,13 @@ class MakeDockerCommand extends Command
     public function handle()
     {
         if (is_dir(base_path('dockerfiles'))) {
-            $this->error('Configuraciones docker ya fueron generadas anteriormente.');
+            $this->error('Docker configurations are already published.');
 
             return;
         }
         $this->createDirectories();
         $this->exportFiles();
-        $this->info('Configuraciónes docker generadas correctamente.');
+        $this->info('Docker configurations published correctly.');
     }
 
     protected function createDirectories()

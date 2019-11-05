@@ -36,7 +36,7 @@ class MakeUtilsCommand extends Command
         $this->exportViews();
         $this->exportLangs();
 
-        $this->info('Vistas & Controladores para Utils generadas correctamente.');
+        $this->info('CSGT Views and controllers generated correctly.');
     }
 
     protected function exportControllers()
