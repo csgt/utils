@@ -3,6 +3,7 @@ namespace Csgt\Utils\Http\Controllers;
 
 use DB;
 use Hash;
+use Cache;
 use Crypt;
 use App\Models\Auth\Role;
 use App\Models\Auth\User;
@@ -151,6 +152,7 @@ class UsersController extends CrudController
                 $ur->save();
             }
         });
+        Cache::flush();
 
         return response()->json('ok');
     }

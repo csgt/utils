@@ -2,6 +2,7 @@
 namespace Csgt\Utils\Http\Controllers;
 
 use DB;
+use Cache;
 use Crypt;
 use Cancerbero;
 use App\Models\Auth\Role;
@@ -139,6 +140,8 @@ class RolesController extends CrudController
                 }
             }
         });
+
+        Cache::flush();
 
         return response()->json('ok');
     }
