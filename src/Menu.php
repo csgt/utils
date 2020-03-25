@@ -2,32 +2,32 @@
 namespace Csgt\Utils;
 
 use DB;
-use Auth;
-use Session;
+use Request;
+use Csgt\Menu\Menu as MenuC;
 use App\Models\Menu\Menu as MMenu;
 
 class Menu
 {
-    protected $parents = [];
-    protected $menuIds = [0];
+    protected static $parents = [];
+    protected static $menuIds = [0];
 
-    public function parents($aMenuId)
+    public static function getParents($aMenuId)
     {
-        if ($this->parents[$aMenuId] != 0) {
-            $this->menuIds[] = $this->parents[$aMenuId];
-            $this->parents($this->parents[$aMenuId]);
+        if (self::$parents[$aMenuId] != 0) {
+            self::$menuIds[] = self::$parents[$aMenuId];
+            self::getParents(self::$parents[$aMenuId]);
         }
     }
 
-    public function menuForRole()
+    public static function menuForRole()
     {
 
-        $userRoles = Auth::user()->roleIds();
+        $userRoles = auth()->user()->roleIds();
 
         $menus = MMenu::select('parent_id', 'id')->get();
         //Guardamos un array de parents para solo abrir el dataset una vez
         foreach ($menus as $menu) {
-            $this->parents[$menu->id] = (int) $menu->parent_id;
+            self::$parents[$menu->id] = (int) $menu->parent_id;
         }
 
         //Buscamos todos los permisos (sin parents) y agregamos los parents
@@ -40,10 +40,10 @@ class Menu
             ->get();
 
         foreach ($permissions as $menu) {
-            $this->menuIds[] = $menu->id;
+            self::$menuIds[] = $menu->id;
             if ($menu->parent_id != 0) {
-                $this->menuIds[] = $menu->parent_id;
-                $this->parents($menu->parent_id);
+                self::$menuIds[] = $menu->parent_id;
+                self::getParents($menu->parent_id);
             }
         }
 
@@ -55,7 +55,7 @@ class Menu
             ->leftJoin('module_permissions AS mp', 'mp.id', '=', 'rmp.module_permission_id')
             ->leftJoin('modules AS mo', 'mo.id', '=', 'mp.module_id')
             ->leftJoin('permissions AS p', 'p.id', '=', 'mp.permission_id')
-            ->whereIn('menus.id', $this->menuIds)
+            ->whereIn('menus.id', self::$menuIds)
             ->orderBy('menus.parent_id')
             ->orderBy('menus.order')
             ->get()
@@ -69,7 +69,32 @@ class Menu
                 ];
             });
 
-        Session::put('menu-collection', collect($permissions->unique()));
+        return collect($permissions->unique());
+        //session()->put('menu-collection', collect($permissions->unique()));
+    }
+
+    public static function menu()
+    {
+        $menu = '';
+        if (auth()->check()) {
+            $id = auth()->id();
+
+            $collection = cache()->rememberForever('menu-collection-' . $id, function () {
+                return self::menuForRole();
+            });
+
+            $menu = cache()->rememberForever('menu-' . $id, function () use ($collection) {
+                $menu = new MenuC;
+
+                return $menu->getMenu($collection);
+            });
+
+            $route = Request::route()->getName();
+            $route = substr($route, 0, strrpos($route, '.')) . '.index';
+            session()->put('menu-selected', $route);
+        }
+
+        return $menu;
     }
 
 }

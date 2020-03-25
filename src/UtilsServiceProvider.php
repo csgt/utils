@@ -16,7 +16,6 @@ class UtilsServiceProvider extends ServiceProvider
 
         $this->loadViewsFrom(__DIR__ . '/resources/views/', 'csgtutils');
 
-        $router->aliasMiddleware('menu', '\Csgt\Utils\Http\Middleware\MenuMW');
         $router->aliasMiddleware('god', '\Csgt\Utils\Http\Middleware\GodMW');
 
     }
