@@ -2,6 +2,7 @@
 namespace Csgt\Utils;
 
 use DB;
+use Cache;
 use Request;
 use Csgt\Menu\Menu as MenuC;
 use App\Models\Menu\Menu as MMenu;
@@ -70,7 +71,6 @@ class Menu
             });
 
         return collect($permissions->unique());
-        //session()->put('menu-collection', collect($permissions->unique()));
     }
 
     public static function menu()
@@ -83,15 +83,12 @@ class Menu
                 return self::menuForRole();
             });
 
-            $menu = cache()->rememberForever('menu-' . $id, function () use ($collection) {
-                $menu = new MenuC;
-
-                return $menu->getMenu($collection);
-            });
-
             $route = Request::route()->getName();
             $route = substr($route, 0, strrpos($route, '.')) . '.index';
             session()->put('menu-selected', $route);
+
+            $mc   = new MenuC;
+            $menu = $mc->getMenu($collection);
         }
 
         return $menu;
