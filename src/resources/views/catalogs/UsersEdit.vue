@@ -82,28 +82,29 @@
         </template>
     </div>
 </template>
-<script>
-    import axios from 'axios';
-    import Selectize from 'vue2-selectize'
 
-    export default {
-        data() {
-            return {
-                data: {
-                    user: null,
-                    roles : [],
-                    changePassword: false
-                },
-                loading : true,
-                saving: false,
-                validationErrors : {
-                    user : null
-                }
+<script>
+import axios from 'axios';
+import Selectize from 'vue2-selectize'
+
+export default {
+    data() {
+        return {
+            data: {
+                user: null,
+                roles: [],
+                changePassword: false
+            },
+            loading: true,
+            saving: false,
+            validationErrors: {
+                user: null
             }
-        },
-        props: ['id'],
-        mounted() {
-            axios.get('/catalogs/users/' + this.id + '/detail')
+        }
+    },
+    props: ['id', 'path'],
+    mounted() {
+        axios.get(this.path + '/' + this.id + '/detail')
             .then(response => {
                 this.loading = false
                 this.data = response.data
@@ -112,42 +113,40 @@
                 this.loading = false
                 alert(e);
             });
-        },
-        methods: {
-            save() {
-                this.saving = true
-                if (this.id != 0) {
-                    axios.patch('/catalogs/users/' + this.id, this.data)
-                        .then((response)=> {
-                            window.location = '/catalogs/users'
-                        })
-                        .catch((error) => {
-                            this.handleError(error)
-                        })
-                }
-                else {
-                   axios.post('/catalogs/users', this.data)
-                        .then((response)=> {
-                            window.location = '/catalogs/users'
-                        })
-                        .catch((error) => {
-                            this.handleError(error)
-                        })
-                }
-            },
-            handleError(error) {
-                this.saving = false
-
-                if (error.response.status == 422){
-                    this.validationErrors = error.response.data.errors;
-                }
-                else {
-                    alert(error.response.data.message)
-                }
+    },
+    methods: {
+        save() {
+            this.saving = true
+            if (this.id != 0) {
+                axios.patch(this.path + '/' + this.id, this.data)
+                    .then((response) => {
+                        window.location = this.path
+                    })
+                    .catch((error) => {
+                        this.handleError(error)
+                    })
+            } else {
+                axios.post(this.path, this.data)
+                    .then((response) => {
+                        window.location = this.path
+                    })
+                    .catch((error) => {
+                        this.handleError(error)
+                    })
             }
         },
-        components: {
-            Selectize
-        },
-    }
+        handleError(error) {
+            this.saving = false
+
+            if (error.response.status == 422) {
+                this.validationErrors = error.response.data.errors;
+            } else {
+                alert(error.response.data.message)
+            }
+        }
+    },
+    components: {
+        Selectize
+    },
+}
 </script>

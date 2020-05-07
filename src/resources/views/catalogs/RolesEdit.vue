@@ -21,7 +21,7 @@
                     <label>Permisos</label>
                     <div class="row">
                         <div v-for="m in data.modules" class="col-sm-4">
-                            <catalogs-rolemodule :module="m"/>
+                            <catalogs-rolemodule :module="m" />
                         </div>
                     </div>
                 </template>
@@ -32,22 +32,23 @@
         </template>
     </div>
 </template>
+
 <script>
-    import axios from 'axios';
-    export default {
-        data() {
-            return {
-                data: {
-                    role: null,
-                    modules: [],
-                },
-                loading : true,
-                saving: false
-            }
-        },
-        props: ['id'],
-        mounted() {
-            axios.get('/catalogs/roles/' + this.id + '/detail')
+import axios from 'axios';
+export default {
+    data() {
+        return {
+            data: {
+                role: null,
+                modules: [],
+            },
+            loading: true,
+            saving: false
+        }
+    },
+    props: ['id', 'path'],
+    mounted() {
+        axios.get(this.path + '/' + this.id + '/detail')
             .then(response => {
                 this.loading = false
                 this.data = response.data
@@ -56,33 +57,32 @@
                 this.loading = false
                 alert(e);
             });
+    },
+    methods: {
+        save() {
+            this.saving = true
+            if (this.id != 0) {
+                axios.patch(this.path + '/' + this.id, this.data)
+                    .then((response) => {
+                        window.location = this.path
+                    })
+                    .catch((error) => {
+                        this.saving = false
+                        alert(error.response.data.message)
+                    })
+            } else {
+                axios.post(this.path, this.data)
+                    .then((response) => {
+                        window.location = this.path
+                    })
+                    .catch((error) => {
+                        this.saving = false
+                        alert(error.response.data.message)
+                    })
+            }
+
+
         },
-        methods: {
-            save() {
-                this.saving = true
-                if (this.id != 0) {
-                    axios.patch('/catalogs/roles/' + this.id, this.data)
-                        .then((response)=> {
-                            window.location = '/catalogs/roles'
-                        })
-                        .catch((error) => {
-                            this.saving = false
-                            alert(error.response.data.message)
-                        })
-                }
-                else {
-                   axios.post('/catalogs/roles', this.data)
-                        .then((response)=> {
-                            window.location = '/catalogs/roles'
-                        })
-                        .catch((error) => {
-                            this.saving = false
-                            alert(error.response.data.message)
-                        })
-                }
-
-
-            },
-        }
     }
+}
 </script>

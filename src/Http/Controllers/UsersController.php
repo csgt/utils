@@ -14,6 +14,8 @@ use Csgt\Cancerbero\Cancerbero;
 
 class UsersController extends CrudController
 {
+    public $path = '/catalogs/users';
+
     public function __construct()
     {
         $this->setModel(new User);
@@ -37,7 +39,7 @@ class UsersController extends CrudController
             return $next($request);
         });
 
-        $this->setPermissions("\Cancerbero::crudPermissions", 'catalogs.users');
+        $this->setPermissions("\Cancerbero::crudPermissions", substr(str_replace('/', '.', $this->path), 1));
     }
 
     public function detail(Request $request, $id)
@@ -83,11 +85,14 @@ class UsersController extends CrudController
     {
         $breadcrumb = '<ol class="breadcrumb float-sm-right">
             <li class="breadcrumb-item">Catálogos</li>
-            <li class="breadcrumb-item"><a href="/catalogs/users">Usuarios</a></li>
+            <li class="breadcrumb-item"><a href="' . $this->path . '">Usuarios</a></li>
             <li class="breadcrumb-item active">Usuario</li>
         </ol>';
 
-        $params = ['id' => $id];
+        $params = [
+            'id'   => $id,
+            'path' => $this->path,
+        ];
 
         return view('component')
             ->withTitle($this->getTitle())

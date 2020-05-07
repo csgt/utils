@@ -9,10 +9,7 @@ class MakeUtilsCommand extends Command
 
     protected $description = 'CSGT Utils';
 
-    protected $views = [
-        'catalogs/roles/edit.stub' => 'catalogs/roles/edit.blade.php',
-        'catalogs/users/edit.stub' => 'catalogs/users/edit.blade.php',
-    ];
+    protected $views = [];
 
     protected $controllers = [
         'Catalogs/RolesController',

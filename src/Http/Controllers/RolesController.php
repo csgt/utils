@@ -13,6 +13,8 @@ use App\Models\Auth\RoleModulePermission;
 
 class RolesController extends CrudController
 {
+    public $path = '/catalogs/roles';
+
     public function __construct()
     {
         $this->setModel(new Role);
@@ -26,7 +28,7 @@ class RolesController extends CrudController
 
             return $next($request);
         });
-        $this->setPermissions("\Cancerbero::crudPermissions", 'catalogs.roles');
+        $this->setPermissions("\Cancerbero::crudPermissions", substr(str_replace('/', '.', $this->path), 1));
     }
 
     public function detail(Request $request, $id)
@@ -80,11 +82,14 @@ class RolesController extends CrudController
     {
         $breadcrumb = '<ol class="breadcrumb float-sm-right">
             <li class="breadcrumb-item">Catálogos</li>
-            <li class="breadcrumb-item"><a href="/catalogs/roles">Roles</a></li>
+            <li class="breadcrumb-item"><a href="' . $this->path . '">Roles</a></li>
             <li class="breadcrumb-item active">Rol</li>
         </ol>';
 
-        $params = ['id' => $id];
+        $params = [
+            'id'   => $id,
+            'path' => $this->path,
+        ];
 
         return view('component')
             ->withTitle($this->getTitle())
