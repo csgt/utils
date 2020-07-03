@@ -1,4 +1,4 @@
-FROM php:7.2-fpm
+FROM php:7.3-fpm
 
 RUN echo 'alias migrate="php artisan migrate"' >> ~/.bashrc
 RUN echo 'alias rollback="php artisan migrate:rollback"' >> ~/.bashrc
@@ -15,3 +15,8 @@ ADD ./dockerfiles/php/limits.conf /usr/local/etc/php-fpm.d/limits.conf
 ADD ./dockerfiles/php/opcache.conf /usr/local/etc/php-fpm.d/opcache.conf
 
 WORKDIR /var/www
+
+COPY dockerfiles/php/php.sh /opt/bin/entrypoint.sh
+RUN chmod +x /opt/bin/entrypoint.sh
+
+CMD ["/opt/bin/entrypoint.sh"]

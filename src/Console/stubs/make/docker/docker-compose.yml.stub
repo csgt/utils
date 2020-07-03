@@ -1,70 +1,68 @@
-version: '2'
+version: '3'
 services:
-  nginx:
-    build:
-      context: ./
-      dockerfile: dockerfiles/nginx/nginx.docker
-    volumes:
-      - './:/var/www'
-    #restart: always
-    ports:
-      - '80:80'
-    links:
-      - php
-  php:
-    build:
-      context: ./
-      dockerfile: dockerfiles/php/php.docker
-    volumes:
-      - './:/var/www'
-    #restart: always
-    links:
-      - mysql
-    environment:
-      - "TZ=America/Guatemala"
-      - DB_PORT=3306
-      - DB_HOST=mysql
-      - REDIS_PORT=6379
-      - REDIS_HOST=redis
-  scheduler:
-    build:
-      context: ./
-      dockerfile: dockerfiles/scheduler/scheduler.docker
-    volumes:
-      - './:/var/www'
-    #restart: always
-    environment:
-      - "TZ=America/Guatemala"
-  mysql:
-    build:
-      context: ./
-      dockerfile: dockerfiles/mysql/mysql.docker
-    volumes:
-      - 'mysql-data:/var/lib/mysql'
-    #restart: always
-    environment:
-      - "TZ=America/Guatemala"
-      - MYSQL_ROOT_PASSWORD=secret
-      - MYSQL_DATABASE=db_name
-    ports:
-      - '33061:3306'
-  redis:
-    build:
-      context: ./
-      dockerfile: dockerfiles/redis/redis.docker
-    #restart: always
-  horizon:
-    build:
-      context: ./
-      dockerfile: dockerfiles/horizon/horizon.docker
-    volumes:
-      - './:/var/www'
-    #restart: always
-    links:
-      - redis
-    environment:
-      - "TZ=America/Guatemala"
-      - REDIS_PORT=6379
-      - REDIS_HOST=redis
+    nginx:
+        build:
+            context: ./
+            dockerfile: dockerfiles/nginx/nginx.docker
+        volumes:
+            - './:/var/www'
+        restart: always
+        ports:
+            - '80:80'
+        links:
+            - php
+    redis:
+        image: redis:5.0
+        restart: always
+    php:
+        build:
+            context: ./
+            dockerfile: dockerfiles/php/php.docker
+        volumes:
+            - './:/var/www'
+        restart: always
+        links:
+            - mysql
+        environment:
+            - "TZ=America/Guatemala"
+            - CONTAINER_ROLE=app
+    scheduler:
+        build:
+            context: ./
+            dockerfile: dockerfiles/php/php.docker
+        volumes:
+            - './:/var/www'
+        restart: always
+        links:
+            - mysql
+        environment:
+            - "TZ=America/Guatemala"
+            - CONTAINER_ROLE=scheduler
+    horizon:
+        build:
+            context: ./
+            dockerfile: dockerfiles/php/php.docker
+        volumes:
+            - './:/var/www'
+        restart: always
+        links:
+            - mysql
+        environment:
+            - "TZ=America/Guatemala"
+            - CONTAINER_ROLE=horizon
+    mysql:
+        build:
+            context: ./
+            dockerfile: dockerfiles/mysql/mysql.docker
+        volumes:
+            - 'mysql-data:/var/lib/mysql'
+        restart: always
+        environment:
+            - "TZ=America/Guatemala"
+            - MYSQL_ROOT_PASSWORD=secret
+            - MYSQL_DATABASE=db_name
+        ports:
+            - '33061:3306'
 volumes:
-  mysql-data: null
+    mysql-data:
+        driver: 'local'
