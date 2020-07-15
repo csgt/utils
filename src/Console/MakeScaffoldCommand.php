@@ -3,7 +3,7 @@ namespace Csgt\Utils\Console;
 
 use Illuminate\Console\Command;
 
-class csgtscaffold extends Command
+class MakeScaffoldCommand extends Command
 {
     /**
      * The name and signature of the console command.
