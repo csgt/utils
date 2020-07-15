@@ -23,6 +23,7 @@ services:
         restart: always
         links:
             - mysql
+            - redis
         environment:
             - "TZ=America/Guatemala"
             - CONTAINER_ROLE=app
@@ -35,6 +36,7 @@ services:
         restart: always
         links:
             - mysql
+            - redis
         environment:
             - "TZ=America/Guatemala"
             - CONTAINER_ROLE=scheduler
@@ -47,6 +49,7 @@ services:
         restart: always
         links:
             - mysql
+            - redis
         environment:
             - "TZ=America/Guatemala"
             - CONTAINER_ROLE=horizon
