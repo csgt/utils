@@ -30,6 +30,10 @@ class UtilsServiceProvider extends ServiceProvider
             Console\MakeDockerCommand::class,
         ]);
 
+        $this->commands([
+            Console\MakeScaffoldCommand::class,
+        ]);
+
         $this->app->singleton('utils', function ($app) {
             return new Utils;
         });
