@@ -1,5 +1,4 @@
 <?php
-
 namespace namespace Csgt\Utils\Facades;
 
 use Illuminate\Support\Facades\Facade;
