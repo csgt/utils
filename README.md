@@ -1,9 +1,13 @@
-= CSGT Utils =
-== Docker ==
-To generate the docker configuration, simply run the `php artisan make:csgtdocker` command. This will create the dockerfiles folder as well as the docker-compose files. Modify to your needs.  
+# CSGT Utils
+
+## Docker
+
+To generate the docker configuration, simply run the
+`php artisan make:csgtdocker`
+command. This will create the dockerfiles folder as well as the docker-compose files. Modify to your needs.  
 If you need to disable scheduling or horizon, simply delete the corresponding sections on the supervisord.conf file.
 
-== Bootstrap scaffolding method ==
+## Bootstrap scaffolding method
 
 `make:csgtscaffold`
 
