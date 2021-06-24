@@ -10,21 +10,19 @@ class MakeDockerCommand extends Command
     protected $directories = [
         'dockerfiles',
         'dockerfiles/mysql',
-        'dockerfiles/nginx',
-        'dockerfiles/php',
+        'dockerfiles/app',
     ];
     protected $files = [
-        'docker/docker-compose.yml.example.stub'     => 'docker-compose.yml.example',
-        'docker/docker-compose.yml.stub'             => 'docker-compose.yml',
-        'docker/dockerfiles/mysql/mysql.docker.stub' => 'dockerfiles/mysql/mysql.docker',
-        'docker/dockerfiles/mysql/my.cnf.stub'       => 'dockerfiles/mysql/my.cnf',
-        'docker/dockerfiles/nginx/nginx.docker.stub' => 'dockerfiles/nginx/nginx.docker',
-        'docker/dockerfiles/nginx/vhost.conf.stub'   => 'dockerfiles/nginx/vhost.conf',
-        'docker/dockerfiles/nginx/gzip.conf.stub'    => 'dockerfiles/nginx/gzip.conf',
-        'docker/dockerfiles/php/php.docker.stub'     => 'dockerfiles/php/php.docker',
-        'docker/dockerfiles/php/limits.conf.stub'    => 'dockerfiles/php/limits.conf',
-        'docker/dockerfiles/php/php.sh.stub'         => 'dockerfiles/php/php.sh',
-        'docker/dockerfiles/php/opcache.conf.stub'   => 'dockerfiles/php/opcache.conf',
+        'docker/docker-compose.yml.example.stub'       => 'docker-compose.yml.example',
+        'docker/docker-compose.yml.example.stub'       => 'docker-compose.yml',
+        'docker/dockerfiles/mysql/Dockerfile.stub'     => 'dockerfiles/mysql/Dockerfile',
+        'docker/dockerfiles/mysql/my.cnf.stub'         => 'dockerfiles/mysql/my.cnf',
+        'docker/dockerfiles/app/Dockerfile.stub'       => 'dockerfiles/app/Dockerfile',
+        'docker/dockerfiles/app/php.ini.stub'          => 'dockerfiles/app/php.ini',
+        'docker/dockerfiles/app/scheduler.sh.stub'     => 'dockerfiles/app/scheduler.sh',
+        'docker/dockerfiles/app/start-container.stub'  => 'dockerfiles/app/start-container',
+        'docker/dockerfiles/app/supervisord.conf.stub' => 'dockerfiles/app/supervisord.conf',
+        'docker/dockerfiles/app/vhost.conf.stub'       => 'dockerfiles/app/vhost.conf',
     ];
 
     public function handle()
