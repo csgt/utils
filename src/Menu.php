@@ -10,11 +10,11 @@ class Menu
     protected static $parents    = [];
     protected static $menuRoutes = [0];
 
-    public static function getParents($aMenuId)
+    public static function getParents($aRoute)
     {
-        if (self::$parents[$aMenuId] != 0) {
-            self::$menuRoutes[] = self::$parents[$aMenuId];
-            self::getParents(self::$parents[$aMenuId]);
+        if (self::$parents[$aRoute]) {
+            self::$menuRoutes[] = self::$parents[$aRoute];
+            self::getParents(self::$parents[$aRoute]);
         }
     }
 
@@ -25,7 +25,7 @@ class Menu
         $menus = MMenu::select('parent_route', 'route')->get();
         //Guardamos un array de parents para solo abrir el dataset una vez
         foreach ($menus as $menu) {
-            self::$parents[$menu->route] = (int) $menu->parent_route;
+            self::$parents[$menu->route] = $menu->parent_route;
         }
 
         //Buscamos todos los permisos (sin parents) y agregamos los parents
