@@ -9,6 +9,8 @@ use App\Models\Auth\Role;
 use App\Models\Auth\Module;
 use Illuminate\Http\Request;
 use Csgt\Crud\CrudController;
+use App\Models\Auth\Permission;
+use App\Models\Auth\ModulePermission;
 use App\Models\Auth\RoleModulePermission;
 
 class RolesController extends CrudController
@@ -34,42 +36,43 @@ class RolesController extends CrudController
     public function detail(Request $request, $id)
     {
         $rmpids = [];
-        $role   = ['name' => null, 'description' => null];
+        $role   = ['name' => null, 'description' => null, 'role_module_permissions' => []];
 
         if ($id !== '0') {
             $id   = Crypt::decrypt($id);
-            $role = Role::with('role_module_permissions:id,role_id,module_permission_id')
+            $role = Role::with('role_module_permissions:id,role_id,module_permission')
                 ->findOrFail($id);
 
             $rmpids = $role->role_module_permissions->map(function ($rmp) {
-                return $rmp->module_permission_id;
+                return $rmp->module_permission;
             })->toArray();
         }
 
-        $modules = Module::query()
-            ->with([
-                'modulepermissions',
-                'modulepermissions.permission' => function ($query) {
-                    $query->orderBy('name');
-                },
-            ])
-            ->orderBy('name')
-            ->get();
+        $permissions = Permission::orderBy('name')->get();
+        $modules     = Module::orderBy('name')->get();
 
-        $modules = $modules->map(function ($module) use ($rmpids) {
-            $mp = $module->modulepermissions->map(function ($mp) use ($rmpids) {
-                $mp->enabled = in_array($mp->id, $rmpids);
+        $modulepermissions = ModulePermission::query()
+            ->orderBy('name')
+            ->get()
+            ->map(function ($mp) use ($modules, $permissions, $rmpids) {
+                $mp->m = $modules->first(function ($m) use ($mp) {
+                    return $m->name == $mp->module;
+                });
+
+                $mp->p = $permissions->first(function ($p) use ($mp) {
+                    return $p->name == $mp->permission;
+                });
+
+                $mp->enabled = in_array($mp->name, $rmpids);
 
                 return $mp;
-            });
-            $module->modulepermissions = $mp;
-
-            return $module;
-        });
+            })
+            ->sortBy('m.description')
+            ->groupBy('m.description');
 
         return response()->json([
-            'role'    => $role,
-            'modules' => $modules,
+            'role'              => $role,
+            'modulepermissions' => $modulepermissions,
         ]);
     }
 
@@ -123,7 +126,6 @@ class RolesController extends CrudController
                 $roleid = Crypt::decrypt($id);
                 $role   = Role::findOrFail($roleid);
 
-                //Authrolmodulopermiso::where('roleid', $roleid)->delete();
             } else {
                 $role = new Role;
             }
@@ -134,12 +136,12 @@ class RolesController extends CrudController
 
             RoleModulePermission::where('role_id', $role->id)->delete();
 
-            foreach ($request->modules as $module) {
-                foreach ($module['modulepermissions'] as $mp) {
+            foreach ($request->modulepermissions as $modules) {
+                foreach ($modules as $mp) {
                     if ($mp['enabled']) {
-                        $rmp                       = new RoleModulePermission;
-                        $rmp->role_id              = $role->id;
-                        $rmp->module_permission_id = $mp['id'];
+                        $rmp                    = new RoleModulePermission;
+                        $rmp->role_id           = $role->id;
+                        $rmp->module_permission = $mp['name'];
                         $rmp->save();
                     }
                 }
