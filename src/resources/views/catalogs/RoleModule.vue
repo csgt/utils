@@ -89,3 +89,8 @@ export default {
     },
 };
 </script>
+<style scoped>
+.btn-tool {
+    padding: 0.1rem;
+}
+</style>
