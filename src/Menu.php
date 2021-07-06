@@ -8,7 +8,7 @@ use App\Models\Menu\Menu as MMenu;
 class Menu
 {
     protected static $parents    = [];
-    protected static $menuRoutes = [0];
+    protected static $menuRoutes = [];
 
     public static function getParents($aRoute)
     {
