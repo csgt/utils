@@ -111,7 +111,7 @@ class UsersController extends CrudController
         $savePass = ($id === 0 || $request->changePassword);
         $rules    = [
             'user.name'     => 'required',
-            'user.email'    => 'required|email',
+            'user.email'    => 'required|unique:users,email' . ($id !== 0 ? ',' . Crypt::decrypt($id) : ''),
             'user.role_ids' => 'required|min:1',
         ];
 

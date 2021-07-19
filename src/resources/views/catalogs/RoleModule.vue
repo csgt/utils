@@ -3,15 +3,23 @@
         <div class="card-header">
             {{ title }}
             <div class="card-tools">
-                <button type="button" class="btn btn-tool" @click="set(true)">
+                <button
+                    type="button"
+                    class="btn btn-tool p-1"
+                    @click="set(true)"
+                >
                     <i class="far fa-check-square"></i>
                 </button>
-                <button type="button" class="btn btn-tool" @click="set(false)">
+                <button
+                    type="button"
+                    class="btn btn-tool p-1"
+                    @click="set(false)"
+                >
                     <i class="far fa-square"></i>
                 </button>
                 <button
                     type="button"
-                    class="btn btn-tool"
+                    class="btn btn-tool p-1"
                     data-card-widget="collapse"
                 >
                     <i class="fa fa-plus"></i>
@@ -89,8 +97,3 @@ export default {
     },
 };
 </script>
-<style scoped>
-.btn-tool {
-    padding: 0.1rem;
-}
-</style>
