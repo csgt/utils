@@ -98,6 +98,7 @@ class UsersController extends CrudController
             ->withTitle($this->getTitle())
             ->withBreadcrumb($breadcrumb)
             ->with('params', $params)
+            ->with('props', $params)
             ->with('component', 'catalogs-users-edit');
     }
 
