@@ -102,8 +102,8 @@ class Menu
                 "nodes" => $menu,
             ],
             [
-                "title"  => "USUARIO",
-                "nodes " => [
+                "title" => "USUARIO",
+                "nodes" => [
                     ['id' => 998, 'label' => 'Perfil', 'icon' => 'fa fa-user', 'url' => '/profile', 'children' => []],
                     ['id' => 999, 'label' => 'Cerrar sesión', 'icon' => 'fa fa-sign-out-alt', 'url' => '/logout', 'children' => []],
                 ],
