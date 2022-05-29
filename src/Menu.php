@@ -82,4 +82,48 @@ class Menu
         return $menu;
     }
 
+    public static function json()
+    {
+        $menu = '';
+        if (auth()->check()) {
+            $id = auth()->id();
+
+            $collection = cache()->rememberForever('menu-collection-' . $id, function () {
+                return self::menuForRole();
+            });
+
+            // return json_encode($collection, JSON_PRETTY_PRINT);
+            $menu = self::children($collection, null);
+        }
+
+        $menu = [
+            [
+                "title" => "",
+                "nodes" => $menu,
+            ],
+            [
+                "title"  => "USUARIO",
+                "nodes " => [
+                    ['id' => 998, 'label' => 'Perfil', 'icon' => 'fa fa-user', 'url' => '/profile', 'children' => []],
+                    ['id' => 999, 'label' => 'Cerrar sesión', 'icon' => 'fa fa-sign-out-alt', 'url' => '/logout', 'children' => []],
+                ],
+            ],
+        ];
+
+        return json_encode($menu, JSON_PRETTY_PRINT);
+    }
+
+    private static function children($nodes, $parent)
+    {
+        return $nodes->where('parent_route', $parent)->map(function ($m, $key) use ($nodes) {
+            return [
+                'id'       => $key,
+                'label'    => $m['name'],
+                'icon'     => $m['icon'],
+                'url'      => $m['has_children'] ? null : route($m['route']),
+                'children' => self::children($nodes, $m['route'])->values(),
+            ];
+        });
+    }
+
 }
