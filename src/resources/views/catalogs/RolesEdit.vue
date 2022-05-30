@@ -8,22 +8,14 @@
         <template v-else>
             <div class="card-body">
                 <div class="row">
-                    <div class="form-group col-sm-12">
+                    <div class="form-group col-sm-12 mb-2">
                         <label for="nombre">Nombre</label>
-                        <input
-                            name="nombre"
-                            type="text"
-                            :class="errorClass('role.name')"
-                            v-model="data.role.name"
-                        />
-                        <small
-                            class="text-danger"
-                            v-if="validationErrors['role.name']"
-                        >
+                        <input name="nombre" type="text" :class="errorClass('role.name')" v-model="data.role.name" />
+                        <small class="text-danger" v-if="validationErrors['role.name']">
                             {{ validationErrors["role.name"][0] }}
                         </small>
                     </div>
-                    <div class="form-group col-sm-12">
+                    <div class="form-group col-sm-12 mb-2">
                         <label for="descripcion">Descripción</label>
                         <input
                             name="descripcion"
@@ -31,39 +23,24 @@
                             :class="errorClass('role.description')"
                             v-model="data.role.description"
                         />
-                        <small
-                            class="text-danger"
-                            v-if="validationErrors['role.description']"
-                        >
+                        <small class="text-danger" v-if="validationErrors['role.description']">
                             {{ validationErrors["role.description"][0] }}
                         </small>
                     </div>
                 </div>
                 <label>Permisos</label>
                 <div class="row">
-                    <div
-                        v-for="(mp, title) in data.modulepermissions"
-                        :key="mp.name"
-                        class="col-sm-4"
-                    >
+                    <div v-for="(mp, title) in data.modulepermissions" :key="mp.name" class="col-sm-4">
                         <catalogs-rolemodule
                             :modulepermissions="mp"
                             :title="title"
-                            :rolemodulepermissions="
-                                data.role.role_module_permissions
-                            "
+                            :rolemodulepermissions="data.role.role_module_permissions"
                         />
                     </div>
                 </div>
             </div>
             <div class="card-footer">
-                <button
-                    class="btn btn-primary"
-                    @click="save"
-                    :disabled="saving"
-                >
-                    Guardar
-                </button>
+                <button class="btn btn-primary" @click="save" :disabled="saving">Guardar</button>
             </div>
         </template>
     </div>

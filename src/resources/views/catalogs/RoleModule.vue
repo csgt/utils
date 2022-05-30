@@ -1,43 +1,30 @@
 <template>
     <div :class="color">
         <div class="card-header">
-            {{ title }}
-            <div class="card-tools">
-                <button
-                    type="button"
-                    class="btn btn-tool p-1"
-                    @click="set(true)"
-                >
-                    <i class="far fa-check-square"></i>
-                </button>
-                <button
-                    type="button"
-                    class="btn btn-tool p-1"
-                    @click="set(false)"
-                >
-                    <i class="far fa-square"></i>
-                </button>
-                <button
-                    type="button"
-                    class="btn btn-tool p-1"
-                    data-card-widget="collapse"
-                >
-                    <i class="fa fa-plus"></i>
-                </button>
+            <div class="row">
+                <div class="col-auto">
+                    <h5 class="card-title">{{ title }}</h5>
+                </div>
+                <div class="col">
+                    <div class="float-right float-end">
+                        <button type="button" class="btn btn-tool p-1" @click="set(true)">
+                            <i class="far fa-check-square"></i>
+                        </button>
+                        <button type="button" class="btn btn-tool p-1" @click="set(false)">
+                            <i class="far fa-square"></i>
+                        </button>
+                        <button type="button" class="btn btn-tool p-1" data-card-widget="collapse">
+                            <i class="fa fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="card-body">
             <template v-for="mp in modulepermissions">
                 <div class="form-check" v-if="shouldShow(mp)" :key="mp.name">
-                    <input
-                        :id="mp.name"
-                        class="form-check-input"
-                        type="checkbox"
-                        v-model="mp.enabled"
-                    />
-                    <label :for="mp.name" class="form-check-label">{{
-                        mp.p.description
-                    }}</label>
+                    <input :id="mp.name" class="form-check-input" type="checkbox" v-model="mp.enabled" />
+                    <label :for="mp.name" class="form-check-label">{{ mp.p.description }}</label>
                 </div>
             </template>
         </div>

@@ -83,7 +83,7 @@ class UsersController extends CrudController
 
     public function edit(Request $request, $id)
     {
-        $breadcrumb = '<ol class="breadcrumb float-sm-right">
+        $breadcrumb = '<ol class="breadcrumb float-sm-right float-sm-end">
             <li class="breadcrumb-item">Catálogos</li>
             <li class="breadcrumb-item"><a href="' . $this->path . '">Usuarios</a></li>
             <li class="breadcrumb-item active">Usuario</li>
