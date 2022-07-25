@@ -33,7 +33,9 @@ class UsersController extends CrudController
         $this->middleware(function ($request, $next) {
             if (!Cancerbero::isGod()) {
                 $ids = UserRole::where('role_id', Cancerbero::godRole())->pluck('user_id');
-                $this->setWhere('id', '<>', $ids);
+                if (!empty($ids)) {
+                    $this->setWhere('id', '<>', $ids);
+                }
             }
 
             return $next($request);
