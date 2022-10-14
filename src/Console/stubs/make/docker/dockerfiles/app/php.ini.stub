@@ -8,4 +8,4 @@ upload_max_filesize = 2048M
 memory_limit = 76000M
 
 # Extensions...
-extension=swoole.so
+#extension=swoole.so
