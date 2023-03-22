@@ -61,13 +61,13 @@ class Menu
         return collect($permissions->unique());
     }
 
-    public static function menu()
+    public static function menu($cachePrefix = 'menu-collection-')
     {
         $menu = '';
         if (auth()->check()) {
             $id = auth()->id();
 
-            $collection = cache()->rememberForever('menu-collection-' . $id, function () {
+            $collection = cache()->rememberForever($cachePrefix . $id, function () {
                 return self::menuForRole();
             });
 
