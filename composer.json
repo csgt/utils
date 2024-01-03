@@ -8,7 +8,7 @@
         }
     ],
     "require": {
-        "php" : ">=7.2"
+        "php": ">=7.0"
     },
     "autoload": {
         "classmap": [
@@ -18,8 +18,8 @@
             "Csgt\\Utils\\": "src"
         }
     },
-    "minimum-stability" : "stable",
-     "extra": {
+    "minimum-stability": "stable",
+    "extra": {
         "laravel": {
             "providers": [
                 "Csgt\\Utils\\UtilsServiceProvider"
