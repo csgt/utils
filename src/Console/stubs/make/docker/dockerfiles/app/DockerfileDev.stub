@@ -8,7 +8,7 @@ WORKDIR /var/www
 
 ENV DEBIAN_FRONTEND noninteractive
 ENV TZ=UTC
-ENV SUPERVISOR_OCTANE_COMMAND="/usr/bin/php -d variables_order=EGPCS /var/www/artisan octane:start --server=swoole --host=0.0.0.0 --port=81"
+ENV SUPERVISOR_OCTANE_COMMAND="/usr/bin/php -d variables_order=EGPCS /var/www/artisan octane:start  --watch --server=swoole --host=0.0.0.0 --port=81"
 
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
@@ -42,9 +42,9 @@ RUN apt-get update \
 
 RUN setcap "cap_net_bind_service=+ep" /usr/bin/php8.1
 
-COPY dockerfiles/app/start-container /usr/local/bin/start-container
-COPY dockerfiles/app/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-COPY dockerfiles/app/php.ini /etc/php/8.1/cli/conf.d/99-sail.ini
+COPY start-container /usr/local/bin/start-container
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY php.ini /etc/php/8.1/cli/conf.d/99-sail.ini
 RUN chmod +x /usr/local/bin/start-container
 
 EXPOSE 8000

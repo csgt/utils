@@ -11,7 +11,8 @@ services:
             - mysql
             - redis
         ports:
-            - '127.0.0.1:80:80'
+            - '127.0.0.1:80:81'
+            - "127.0.0.1:5173:5173"
     redis:
         image: redis:5.0
         restart: always
@@ -23,7 +24,6 @@ services:
             - 'mysql-data:/var/lib/mysql'
         restart: always
         environment:
-            - "TZ=America/Guatemala"
             - MYSQL_ROOT_PASSWORD=secret
             - MYSQL_DATABASE=db_name
         ports:
