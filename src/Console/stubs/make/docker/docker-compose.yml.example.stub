@@ -1,59 +1,25 @@
 version: '3'
 services:
-    nginx:
+    app:
         build:
             context: ./
-            dockerfile: dockerfiles/nginx/nginx.docker
+            dockerfile: dockerfiles/app/Dockerfile
         volumes:
             - './:/var/www'
         restart: always
-        ports:
-            - '80:80'
         links:
-            - php
+            - mysql
+            - redis
+        ports:
+            - '127.0.0.1:80:81'
+            - "127.0.0.1:5173:5173"
     redis:
         image: redis:5.0
         restart: always
-    php:
-        build:
-            context: ./
-            dockerfile: dockerfiles/php/php.docker
-        volumes:
-            - './:/var/www'
-        restart: always
-        links:
-            - mysql
-        environment:
-            - "TZ=America/Guatemala"
-            - CONTAINER_ROLE=app
-    scheduler:
-        build:
-            context: ./
-            dockerfile: dockerfiles/php/php.docker
-        volumes:
-            - './:/var/www'
-        restart: always
-        links:
-            - mysql
-        environment:
-            - "TZ=America/Guatemala"
-            - CONTAINER_ROLE=scheduler
-    horizon:
-        build:
-            context: ./
-            dockerfile: dockerfiles/php/php.docker
-        volumes:
-            - './:/var/www'
-        restart: always
-        links:
-            - mysql
-        environment:
-            - "TZ=America/Guatemala"
-            - CONTAINER_ROLE=horizon
     mysql:
         build:
             context: ./
-            dockerfile: dockerfiles/mysql/mysql.docker
+            dockerfile: dockerfiles/mysql/Dockerfile
         volumes:
             - 'mysql-data:/var/lib/mysql'
         restart: always
@@ -62,7 +28,7 @@ services:
             - MYSQL_ROOT_PASSWORD=secret
             - MYSQL_DATABASE=db_name
         ports:
-            - '33061:3306'
+            - '127.0.0.1:33061:3306'
 volumes:
     mysql-data:
         driver: 'local'

@@ -1,0 +1,29 @@
+[supervisord]
+nodaemon=true
+user=root
+logfile=/var/log/supervisor/supervisord.log
+pidfile=/var/run/supervisord.pid
+
+[program:octane]
+command=%(ENV_SUPERVISOR_OCTANE_COMMAND)s
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+user=root
+
+# [program:horizon]
+# command=/usr/bin/php -d variables_order=EGPCS /var/www/artisan horizon
+# user=root
+# stdout_logfile=/dev/stdout
+# stdout_logfile_maxbytes=0
+# stderr_logfile=/dev/stderr
+# stderr_logfile_maxbytes=0
+
+# [program:scheduler]
+# command=/usr/local/bin/scheduler.sh
+# user=root
+# stdout_logfile=/dev/stdout
+# stdout_logfile_maxbytes=0
+# stderr_logfile=/dev/stderr
+# stderr_logfile_maxbytes=0
