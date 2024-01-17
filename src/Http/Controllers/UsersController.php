@@ -4,7 +4,6 @@ namespace Csgt\Utils\Http\Controllers;
 use DB;
 use Hash;
 use Cache;
-use Crypt;
 use App\Models\Auth\Role;
 use App\Models\Auth\User;
 use Illuminate\Http\Request;
@@ -16,7 +15,7 @@ class UsersController extends CrudController
 {
     public $path = '/catalogs/users';
 
-    public function __construct()
+    public function setup(Request $request)
     {
         $this->setModel(new User);
         $this->setTitle('Usuarios');
@@ -30,16 +29,14 @@ class UsersController extends CrudController
         $this->setField(['name' => 'Creado', 'field' => 'created_at', 'type' => 'datetime']);
         $this->setField(['name' => 'Activo', 'field' => 'active', 'type' => 'bool']);
 
-        $this->middleware(function ($request, $next) {
-            if (!Cancerbero::isGod()) {
-                $ids = UserRole::where('role_id', Cancerbero::godRole())->pluck('user_id');
+        if (!Cancerbero::isGod()) {
+            $ids = UserRole::where('role_id', Cancerbero::godRole())->pluck('user_id');
+            if (!empty($ids)) {
                 $this->setWhere('id', '<>', $ids);
             }
+        }
 
-            return $next($request);
-        });
-
-        $this->setPermissions("\Cancerbero::crudPermissions", substr(str_replace('/', '.', $this->path), 1));
+        $this->setPermissions(Cancerbero::crudPermissions(substr(str_replace('/', '.', $this->path), 1)));
     }
 
     public function detail(Request $request, $id)
@@ -53,7 +50,6 @@ class UsersController extends CrudController
         ];
 
         if ($id !== '0') {
-            $id   = Crypt::decrypt($id);
             $user = User::with('roles')->findOrFail($id);
 
             $roleIds = $user->roles->map(function ($role) {
@@ -111,7 +107,7 @@ class UsersController extends CrudController
         $savePass = ($id === 0 || $request->changePassword);
         $rules    = [
             'user.name'     => 'required',
-            'user.email'    => 'required|email',
+            'user.email'    => 'required|unique:users,email' . ($id !== 0 ? ',' . $id : ''),
             'user.role_ids' => 'required|min:1',
         ];
 
@@ -133,7 +129,7 @@ class UsersController extends CrudController
         DB::transaction(function () use ($request, $id, $savePass) {
 
             if ($id !== 0) {
-                $userId = Crypt::decrypt($id);
+                $userId = $id;
                 $user   = User::findOrFail($userId);
 
             } else {

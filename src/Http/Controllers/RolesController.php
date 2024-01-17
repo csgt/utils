@@ -3,7 +3,6 @@ namespace Csgt\Utils\Http\Controllers;
 
 use DB;
 use Cache;
-use Crypt;
 use Cancerbero;
 use App\Models\Auth\Role;
 use App\Models\Auth\Module;
@@ -15,20 +14,16 @@ class RolesController extends CrudController
 {
     public $path = '/catalogs/roles';
 
-    public function __construct()
+    public function setup(Request $request)
     {
         $this->setModel(new Role);
         $this->setTitle('Roles');
         $this->setField(['name' => 'Nombre', 'field' => 'name']);
         $this->setField(['name' => 'Descripción', 'field' => 'description']);
-        $this->middleware(function ($request, $next) {
-            if (!Cancerbero::isGod()) {
-                $this->setWhere('id', '<>', Cancerbero::godRole());
-            }
-
-            return $next($request);
-        });
-        $this->setPermissions("\Cancerbero::crudPermissions", substr(str_replace('/', '.', $this->path), 1));
+        if (!Cancerbero::isGod()) {
+            $this->setWhere('id', '<>', Cancerbero::godRole());
+        }
+        $this->setPermissions(Cancerbero::crudPermissions(substr(str_replace('/', '.', $this->path), 1)));
     }
 
     public function detail(Request $request, $id)
@@ -37,8 +32,7 @@ class RolesController extends CrudController
         $role   = ['name' => null, 'description' => null];
 
         if ($id !== '0') {
-            $id   = Crypt::decrypt($id);
-            $role = Role::with('role_module_permissions:id,role_id,module_permission_id')
+            $role = Role::with('role_module_permissions:id,role_id,module_permission')
                 ->findOrFail($id);
 
             $rmpids = $role->role_module_permissions->map(function ($rmp) {
@@ -120,7 +114,7 @@ class RolesController extends CrudController
         DB::transaction(function () use ($request, $id) {
 
             if ($id !== 0) {
-                $roleid = Crypt::decrypt($id);
+                $roleid = $id;
                 $role   = Role::findOrFail($roleid);
 
                 //Authrolmodulopermiso::where('roleid', $roleid)->delete();
