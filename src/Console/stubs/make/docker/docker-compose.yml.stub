@@ -3,7 +3,7 @@ services:
     app:
         build:
             context: ./
-            dockerfile: dockerfiles/app/Dockerfile
+            dockerfile: dockerfiles/app/DockerfileDev
         volumes:
             - './:/var/www'
         ports:
