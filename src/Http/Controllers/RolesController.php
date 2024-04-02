@@ -30,37 +30,33 @@ class RolesController extends CrudController
     {
         $rmpids = [];
         $role   = ['name' => null, 'description' => null];
-
         if ($id !== '0') {
             $role = Role::with('role_module_permissions:id,role_id,module_permission')
                 ->findOrFail($id);
 
             $rmpids = $role->role_module_permissions->map(function ($rmp) {
-                return $rmp->module_permission_id;
+                return $rmp->module_permission;
             })->toArray();
         }
 
         $modules = Module::query()
-            ->with([
-                'modulepermissions',
-                'modulepermissions.permission' => function ($query) {
-                    $query->orderBy('name');
-                },
-            ])
             ->orderBy('name')
             ->get();
-
-        $modules = $modules->map(function ($module) use ($rmpids) {
-            $mp = $module->modulepermissions->map(function ($mp) use ($rmpids) {
-                $mp->enabled = in_array($mp->id, $rmpids);
-
-                return $mp;
-            });
-            $module->modulepermissions = $mp;
-
+        $modules = $modules->map(function ($module) use ($rmpids){
+            $module_permissions = ModulePermission::orderBy('name')
+                ->get()
+                ->map(function ($mp) use ($module,$rmpids) {
+                    if ($mp->module == $module->name ){
+                        $mp->enabled = in_array($mp->name, $rmpids);
+                        return $mp;
+                    }
+                    return null;
+                })
+            ->filter()
+            ->values();
+            $module->modulepermissions = $module_permissions;
             return $module;
         });
-
         return response()->json([
             'role'    => $role,
             'modules' => $modules,
@@ -127,13 +123,12 @@ class RolesController extends CrudController
             $role->save();
 
             RoleModulePermission::where('role_id', $role->id)->delete();
-
             foreach ($request->modules as $module) {
                 foreach ($module['modulepermissions'] as $mp) {
                     if ($mp['enabled']) {
                         $rmp                       = new RoleModulePermission;
                         $rmp->role_id              = $role->id;
-                        $rmp->module_permission_id = $mp['id'];
+                        $rmp->module_permission = $mp['name'];
                         $rmp->save();
                     }
                 }
