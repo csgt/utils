@@ -9,6 +9,7 @@ use App\Models\Auth\Module;
 use Illuminate\Http\Request;
 use Csgt\Crud\CrudController;
 use App\Models\Auth\RoleModulePermission;
+use Csgt\Cancerbero\Models\ModulePermission;
 
 class RolesController extends CrudController
 {
