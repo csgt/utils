@@ -5,7 +5,7 @@ logfile=/var/log/supervisor/supervisord.log
 pidfile=/var/run/supervisord.pid
 
 [program:octane]
-command=%(ENV_SUPERVISOR_OCTANE_COMMAND)s
+command=/usr/bin/php -d variables_order=EGPCS /var/www/artisan octane:start --server=swoole --host=0.0.0.0 --port=81 %(ENV_SUPERVISOR_OCTANE_EXTRA)s
 stdout_logfile=/dev/stdout
 stdout_logfile_maxbytes=0
 stderr_logfile=/dev/stderr

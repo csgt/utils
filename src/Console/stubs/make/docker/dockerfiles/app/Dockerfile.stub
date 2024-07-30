@@ -3,12 +3,13 @@ FROM ubuntu:22.04
 LABEL maintainer="Taylor Otwell"
 
 ARG NODE_VERSION=20
+ARG SUPERVISOR_OCTANE_EXTRA
 
 WORKDIR /var/www
 
 ENV DEBIAN_FRONTEND noninteractive
 ENV TZ=UTC
-ENV SUPERVISOR_OCTANE_COMMAND="/usr/bin/php -d variables_order=EGPCS /var/www/artisan octane:start --server=swoole --host=0.0.0.0 --port=81"
+ENV SUPERVISOR_OCTANE_EXTRA=$SUPERVISOR_OCTANE_EXTRA
 
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 

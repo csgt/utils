@@ -16,7 +16,6 @@ class MakeDockerCommand extends Command
         'docker/docker-compose.yml.example.stub'       => 'docker-compose.yml.example',
         'docker/docker-compose.yml.stub'               => 'docker-compose.yml',
         'docker/dockerfiles/app/Dockerfile.stub'       => 'dockerfiles/app/Dockerfile',
-        'docker/dockerfiles/app/DockerfileDev.stub'    => 'dockerfiles/app/DockerfileDev',
         'docker/dockerfiles/app/php.ini.stub'          => 'dockerfiles/app/php.ini',
         'docker/dockerfiles/app/scheduler.sh.stub'     => 'dockerfiles/app/scheduler.sh',
         'docker/dockerfiles/app/start-container.stub'  => 'dockerfiles/app/start-container',

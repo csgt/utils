@@ -1,9 +1,10 @@
-version: '3'
 services:
     app:
         build:
             context: ./
-            dockerfile: dockerfiles/app/DockerfileDev
+            dockerfile: dockerfiles/app/Dockerfile
+            args:
+                - SUPERVISOR_OCTANE_EXTRA="--watch"
         volumes:
             - './:/var/www'
         ports:
