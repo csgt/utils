@@ -6,6 +6,7 @@ use Cache;
 use Cancerbero;
 use App\Models\Role;
 use App\Models\Module;
+use App\Models\Permission;
 use Illuminate\Http\Request;
 use Csgt\Crud\CrudController;
 use App\Models\RoleModulePermission;
@@ -32,7 +33,8 @@ class RolesController extends CrudController
         $rmpids = [];
         $role   = ['name' => null, 'description' => null];
         if ($id !== '0') {
-            $role = Role::with('role_module_permissions:id,role_id,module_permission')
+            $role = Role::query()
+                ->with('role_module_permissions:id,role_id,module_permission')
                 ->findOrFail($id);
 
             $rmpids = $role->role_module_permissions->map(function ($rmp) {
@@ -43,10 +45,17 @@ class RolesController extends CrudController
         $modules = Module::query()
             ->orderBy('name')
             ->get();
-        $modules = $modules->map(function ($module) use ($rmpids) {
+
+        $permissions = Permission::orderBy('name')->get();
+
+        $modules = $modules->map(function ($module) use ($rmpids, $permissions) {
             $module_permissions = ModulePermission::orderBy('name')
                 ->get()
-                ->map(function ($mp) use ($module, $rmpids) {
+                ->map(function ($mp) use ($module, $rmpids, $permissions) {
+                    $arr             = explode('.', $mp->name);
+                    $permission      = array_pop($arr);
+                    $mp->description = $permissions->where('name', $permission)->first()->description;
+
                     if ($mp->module == $module->name) {
                         $mp->enabled = in_array($mp->name, $rmpids);
 
