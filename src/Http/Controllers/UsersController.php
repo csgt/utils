@@ -4,10 +4,10 @@ namespace Csgt\Utils\Http\Controllers;
 use DB;
 use Hash;
 use Cache;
-use App\Models\Auth\Role;
-use App\Models\Auth\User;
+use App\Models\Role;
+use App\Models\User;
+use App\Models\UserRole;
 use Illuminate\Http\Request;
-use App\Models\Auth\UserRole;
 use Csgt\Crud\CrudController;
 use Csgt\Cancerbero\Cancerbero;
 

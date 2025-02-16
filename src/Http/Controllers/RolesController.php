@@ -4,11 +4,11 @@ namespace Csgt\Utils\Http\Controllers;
 use DB;
 use Cache;
 use Cancerbero;
-use App\Models\Auth\Role;
-use App\Models\Auth\Module;
+use App\Models\Role;
+use App\Models\Module;
 use Illuminate\Http\Request;
 use Csgt\Crud\CrudController;
-use App\Models\Auth\RoleModulePermission;
+use App\Models\RoleModulePermission;
 use Csgt\Cancerbero\Models\ModulePermission;
 
 class RolesController extends CrudController
@@ -43,21 +43,25 @@ class RolesController extends CrudController
         $modules = Module::query()
             ->orderBy('name')
             ->get();
-        $modules = $modules->map(function ($module) use ($rmpids){
+        $modules = $modules->map(function ($module) use ($rmpids) {
             $module_permissions = ModulePermission::orderBy('name')
                 ->get()
-                ->map(function ($mp) use ($module,$rmpids) {
-                    if ($mp->module == $module->name ){
+                ->map(function ($mp) use ($module, $rmpids) {
+                    if ($mp->module == $module->name) {
                         $mp->enabled = in_array($mp->name, $rmpids);
+
                         return $mp;
                     }
+
                     return null;
                 })
-            ->filter()
-            ->values();
+                ->filter()
+                ->values();
             $module->modulepermissions = $module_permissions;
+
             return $module;
         });
+
         return response()->json([
             'role'    => $role,
             'modules' => $modules,
@@ -127,8 +131,8 @@ class RolesController extends CrudController
             foreach ($request->modules as $module) {
                 foreach ($module['modulepermissions'] as $mp) {
                     if ($mp['enabled']) {
-                        $rmp                       = new RoleModulePermission;
-                        $rmp->role_id              = $role->id;
+                        $rmp                    = new RoleModulePermission;
+                        $rmp->role_id           = $role->id;
                         $rmp->module_permission = $mp['name'];
                         $rmp->save();
                     }
