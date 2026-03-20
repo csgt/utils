@@ -67,9 +67,9 @@ class Menu
         if (auth()->check()) {
             $id = auth()->id();
 
-            $collection = cache()->rememberForever($cachePrefix . $id, function () {
-                return self::menuForRole();
-            });
+            $collection = collect(cache()->rememberForever($cachePrefix . 'v2-' . $id, function () {
+                return self::menuForRole()->toArray();
+            }));
 
             $route = Request::route()->getName();
             $route = substr($route, 0, strrpos($route, '.')) . '.index';
@@ -88,9 +88,9 @@ class Menu
         if (auth()->check()) {
             $id = auth()->id();
 
-            $collection = cache()->rememberForever('menu-collection-' . $id, function () {
-                return self::menuForRole();
-            });
+            $collection = collect(cache()->rememberForever('menu-collection-v2-' . $id, function () {
+                return self::menuForRole()->toArray();
+            }));
 
             // return json_encode($collection, JSON_PRETTY_PRINT);
             $menu = self::children($collection, null);
