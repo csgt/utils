@@ -1,0 +1,202 @@
+name: "CI/CD Pipeline"
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same branch/PR so only the latest commit matters.
+concurrency:
+  group: "ci-cd-${{ github.ref }}"
+  cancel-in-progress: true
+
+# Per-project configuration. Adjust these to match each project's stack.
+env:
+  PHP_VERSION: "{{PHP_VERSION}}"
+  NODE_VERSION: "{{NODE_VERSION}}"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Continuous Integration: runs on every push and pull request. Universal,
+  # rarely needs editing between projects.
+  # ---------------------------------------------------------------------------
+  ci:
+    name: "Continuous Integration"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@v4
+
+      - name: "Setup PHP"
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "${{ env.PHP_VERSION }}"
+          extensions: mbstring, dom, fileinfo, bcmath, intl, gd, zip, pdo_sqlite, sqlite3
+          coverage: none
+          tools: composer:v2
+
+      - name: "Get Composer cache directory"
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: "Cache Composer dependencies"
+        uses: actions/cache@v4
+        with:
+          path: "${{ steps.composer-cache.outputs.dir }}"
+          key: "${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}"
+          restore-keys: "${{ runner.os }}-composer-"
+
+      - name: "Install Composer dependencies"
+        run: composer install --prefer-dist --no-interaction --no-progress --no-ansi
+
+      - name: "Prepare application environment"
+        run: |
+          [ -f .env ] || { [ -f .env.example ] && cp .env.example .env; }
+          php artisan key:generate
+
+      # Style check is non-blocking on purpose so CI can be adopted on legacy
+      # projects without forcing an immediate full reformat. Once the codebase
+      # is clean, remove "continue-on-error" to make it enforcing.
+      - name: "Check code style (Pint)"
+        continue-on-error: true
+        run: |
+          if [ -f vendor/bin/pint ]; then
+            vendor/bin/pint --test
+          else
+            echo "Pint is not installed, skipping style check."
+          fi
+
+      # Test database configuration lives in the project's phpunit.xml
+      # (e.g. sqlite :memory:). Projects without tests pass this step harmlessly.
+      - name: "Run tests"
+        run: php artisan test
+
+      - name: "Setup Node"
+        uses: actions/setup-node@v4
+        with:
+          node-version: "${{ env.NODE_VERSION }}"
+
+      - name: "Build frontend assets"
+        run: |
+          if [ -f package.json ]; then
+            if [ -f package-lock.json ]; then
+              npm ci
+            else
+              npm install
+            fi
+            npm run build
+          else
+            echo "No package.json found, skipping frontend build."
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Continuous Deployment: only runs on pushes to main, and only if "ci" passed.
+  # This block is project-specific (host, Docker, Octane, etc.) — adjust it.
+  # ---------------------------------------------------------------------------
+  deploy:
+    name: "Deploy to production"
+    runs-on: ubuntu-latest
+    needs: ci
+    if: "github.event_name == 'push' && github.ref == 'refs/heads/main'"
+    environment: ci-cd
+    steps:
+      - name: "Deploy on production server"
+        env:
+          PRODUCTION_HOST: ${{ secrets.PRODUCTION_HOST }}
+          PRODUCTION_USER: ${{ secrets.PRODUCTION_USER }}
+          PRODUCTION_PATH: ${{ secrets.PRODUCTION_PATH }}
+          PRODUCTION_SSH_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
+          PRODUCTION_SSH_PORT: ${{ secrets.PRODUCTION_SSH_PORT }}
+        run: |
+          set -euo pipefail
+
+          SSH_PORT="${PRODUCTION_SSH_PORT:-22}"
+          REMOTE_PATH="$(printf '%q' "$PRODUCTION_PATH")"
+
+          [ -n "${PRODUCTION_HOST:-}" ] || { echo "::error::PRODUCTION_HOST is empty"; exit 1; }
+          [ -n "${PRODUCTION_USER:-}" ] || { echo "::error::PRODUCTION_USER is empty"; exit 1; }
+          [ -n "${PRODUCTION_PATH:-}" ] || { echo "::error::PRODUCTION_PATH is empty"; exit 1; }
+          [ -n "${PRODUCTION_SSH_KEY:-}" ] || { echo "::error::PRODUCTION_SSH_KEY is empty"; exit 1; }
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$PRODUCTION_SSH_KEY" | tr -d '\r' > ~/.ssh/production_deploy_key
+          chmod 600 ~/.ssh/production_deploy_key
+
+          if ! ssh-keygen -y -P "" -f ~/.ssh/production_deploy_key > ~/.ssh/production_deploy_key.pub; then
+            echo "::error::PRODUCTION_SSH_KEY is not a readable unencrypted private key. Use a deploy key without a passphrase, or add ssh-agent/passphrase handling."
+            exit 1
+          fi
+
+          ssh-keyscan -p "$SSH_PORT" -H "$PRODUCTION_HOST" >> ~/.ssh/known_hosts
+
+          ssh \
+            -i ~/.ssh/production_deploy_key \
+            -p "$SSH_PORT" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o PreferredAuthentications=publickey \
+            -o PubkeyAuthentication=yes \
+            -o PasswordAuthentication=no \
+            -o ConnectTimeout=30 \
+            "$PRODUCTION_USER@$PRODUCTION_HOST" \
+            "PRODUCTION_PATH=$REMOTE_PATH bash -se" << 'EOF'
+          set -euo pipefail
+
+          log() {
+            printf '\n[%s] %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$1"
+          }
+
+          ensure_git_safe_directory() {
+            if git config --global --get-all safe.directory | grep -Fxq "$PRODUCTION_PATH"; then
+              return
+            fi
+
+            git config --global --add safe.directory "$PRODUCTION_PATH"
+          }
+
+          ensure_repository_owner() {
+            deploy_uid="$(id -u)"
+            deploy_gid="$(id -g)"
+            expected_owner="$deploy_uid:$deploy_gid"
+
+            if [ -w "$PRODUCTION_PATH/.git" ] && { [ ! -e "$PRODUCTION_PATH/.git/FETCH_HEAD" ] || [ -w "$PRODUCTION_PATH/.git/FETCH_HEAD" ]; }; then
+              return
+            fi
+
+            sudo -n chown -R "$expected_owner" "$PRODUCTION_PATH"
+          }
+
+          on_error() {
+            status=$?
+            log "Deployment failed with exit code $status"
+            exit "$status"
+          }
+
+          trap on_error ERR
+
+          cd "$PRODUCTION_PATH"
+          ensure_repository_owner
+          ensure_git_safe_directory
+
+          log "Updating application"
+          git pull origin main
+
+          log "Building and starting containers"
+          docker compose build app
+          docker compose up -d app redis
+
+          log "Running deployment commands"
+          docker compose exec -T app composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+          docker compose exec -T app php artisan migrate --force
+          docker compose exec -T app npm ci
+          docker compose exec -T app npm run build
+          # Remove any stale Vite dev-server marker so @vite serves the
+          # production build (public/build) instead of http://localhost:5173.
+          docker compose exec -T app rm -f public/hot
+          docker compose exec -T app php artisan config:cache
+          docker compose exec -T app php artisan octane:reload
+
+          log "Deployment completed successfully"
+          EOF
