@@ -2,14 +2,9 @@ name: "CI/CD Pipeline"
 
 on:
   push:
-    branches: [main]
+    branches: ["{{BRANCH}}"]
   pull_request:
-    branches: [main]
-
-# Cancel superseded runs on the same branch/PR so only the latest commit matters.
-concurrency:
-  group: "ci-cd-${{ github.ref }}"
-  cancel-in-progress: true
+    branches: ["{{BRANCH}}"]
 
 # Per-project configuration. Adjust these to match each project's stack.
 env:
@@ -24,9 +19,14 @@ jobs:
   ci:
     name: "Continuous Integration"
     runs-on: ubuntu-latest
+    # Superseded CI runs on the same branch/PR are cancelled: only the latest
+    # commit matters and we save runner minutes.
+    concurrency:
+      group: "ci-${{ github.workflow }}-${{ github.ref }}"
+      cancel-in-progress: true
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: "Setup PHP"
         uses: shivammathur/setup-php@v2
@@ -41,7 +41,7 @@ jobs:
         run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
 
       - name: "Cache Composer dependencies"
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: "${{ steps.composer-cache.outputs.dir }}"
           key: "${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}"
@@ -53,7 +53,11 @@ jobs:
       - name: "Prepare application environment"
         run: |
           [ -f .env ] || { [ -f .env.example ] && cp .env.example .env; }
-          php artisan key:generate
+          if [ -f .env ]; then
+            php artisan key:generate
+          else
+            echo "No .env or .env.example found, skipping key:generate."
+          fi
 
       # Style check is non-blocking on purpose so CI can be adopted on legacy
       # projects without forcing an immediate full reformat. Once the codebase
@@ -67,13 +71,19 @@ jobs:
             echo "Pint is not installed, skipping style check."
           fi
 
-      # Test database configuration lives in the project's phpunit.xml
-      # (e.g. sqlite :memory:). Projects without tests pass this step harmlessly.
+      # Most legacy projects have no tests yet. When a PHPUnit configuration is
+      # present the suite runs and IS enforcing; otherwise the step skips
+      # cleanly. Test DB config (e.g. sqlite :memory:) lives in phpunit.xml.
       - name: "Run tests"
-        run: php artisan test
+        run: |
+          if [ -f phpunit.xml ] || [ -f phpunit.xml.dist ]; then
+            php artisan test
+          else
+            echo "No PHPUnit configuration found, skipping tests."
+          fi
 
       - name: "Setup Node"
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "${{ env.NODE_VERSION }}"
 
@@ -91,15 +101,23 @@ jobs:
           fi
 
   # ---------------------------------------------------------------------------
-  # Continuous Deployment: only runs on pushes to main, and only if "ci" passed.
-  # This block is project-specific (host, Docker, Octane, etc.) — adjust it.
+  # Continuous Deployment: only runs on pushes to the deploy branch, and only
+  # if "ci" passed. This block is project-specific (host, Docker, Octane, etc.)
+  # — adjust the deployment commands to match the project.
   # ---------------------------------------------------------------------------
   deploy:
     name: "Deploy to production"
     runs-on: ubuntu-latest
     needs: ci
-    if: "github.event_name == 'push' && github.ref == 'refs/heads/main'"
-    environment: ci-cd
+    if: "github.event_name == 'push' && github.ref == 'refs/heads/{{BRANCH}}'"
+    environment: production
+    # Deploys are NEVER cancelled mid-flight: concurrent pushes queue instead of
+    # killing a running deployment (which could leave the server half-migrated).
+    concurrency:
+      group: "deploy-${{ github.workflow }}-${{ github.ref }}"
+      cancel-in-progress: false
+    env:
+      PRODUCTION_HEALTHCHECK_URL: ${{ secrets.PRODUCTION_HEALTHCHECK_URL }}
     steps:
       - name: "Deploy on production server"
         env:
@@ -108,6 +126,7 @@ jobs:
           PRODUCTION_PATH: ${{ secrets.PRODUCTION_PATH }}
           PRODUCTION_SSH_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
           PRODUCTION_SSH_PORT: ${{ secrets.PRODUCTION_SSH_PORT }}
+          PRODUCTION_SSH_KNOWN_HOSTS: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS }}
         run: |
           set -euo pipefail
 
@@ -129,7 +148,15 @@ jobs:
             exit 1
           fi
 
-          ssh-keyscan -p "$SSH_PORT" -H "$PRODUCTION_HOST" >> ~/.ssh/known_hosts
+          # Pin the host key via the PRODUCTION_SSH_KNOWN_HOSTS secret to prevent
+          # man-in-the-middle attacks. Without it we fall back to ssh-keyscan
+          # (trust on first use), which is convenient but less secure.
+          if [ -n "${PRODUCTION_SSH_KNOWN_HOSTS:-}" ]; then
+            printf '%s\n' "$PRODUCTION_SSH_KNOWN_HOSTS" >> ~/.ssh/known_hosts
+          else
+            echo "::warning::PRODUCTION_SSH_KNOWN_HOSTS not set; falling back to ssh-keyscan (trust on first use). Pin the host key for production."
+            ssh-keyscan -p "$SSH_PORT" -H "$PRODUCTION_HOST" >> ~/.ssh/known_hosts
+          fi
 
           ssh \
             -i ~/.ssh/production_deploy_key \
@@ -156,6 +183,34 @@ jobs:
             git config --global --add safe.directory "$PRODUCTION_PATH"
           }
 
+          ensure_github_known_hosts() {
+            mkdir -p ~/.ssh
+            chmod 700 ~/.ssh
+
+            GITHUB_KNOWN_HOSTS="$HOME/.ssh/github_known_hosts"
+
+            # GitHub's published SSH host keys:
+            # https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints
+            cat > "$GITHUB_KNOWN_HOSTS" << 'KNOWN_HOSTS'
+          github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
+          github.com ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEmKSENjQEezOmxkZMy7opKgwFB9nkt5YRrYMjNuG5N87uRgg6CLrbo5wAdT/y6v0mKV0U2w0WZ2YB/++Tpockg=
+          github.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCj7ndNxQowgcQnjshcLrqPEiiphnt+VTTvDP6mHBL9j1aNUkY4Ue1gvwnGLVlOhGeYrnZaMgRK6+PKCUXaDbC7qtbW8gIkhL7aGCsOr/C56SJMy/BCZfxd1nWzAOxSDPgVsmerOBYfNqltV9/hWCqBywINIR+5dIg6JTJ72pcEpEjcYgXkE2YEFXV1JHnsKgbLWNlhScqb2UmyRkQyytRLtL+38TGxkxCflmO+5Z8CSSNY7GidjMIZ7Q4zMjA2n1nGrlTDkzwDCsw+wqFPGQA179cnfGWOWRVruj16z6XyvxvjJwbz0wQZ75XK5tKSb7FNyeIEs4TT4jk+S4dhPeAUC5y+bDYirYgM4GC7uEnztnZyaVWQ7B381AK4Qdrwt51ZqExKbQpTUNn+EjqoTwvqNj4kqx5QUCI0ThS/YkOxJCXmPUWZbhjpCg56i+2aB6CmK2JGhn57K5mj0MNdBXA4/WnwH6XoPWJzK5Nyu2zB3nAZp+S5hpQs+p1vN1/wsjk=
+          [github.com]:22 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
+          [github.com]:22 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEmKSENjQEezOmxkZMy7opKgwFB9nkt5YRrYMjNuG5N87uRgg6CLrbo5wAdT/y6v0mKV0U2w0WZ2YB/++Tpockg=
+          [github.com]:22 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCj7ndNxQowgcQnjshcLrqPEiiphnt+VTTvDP6mHBL9j1aNUkY4Ue1gvwnGLVlOhGeYrnZaMgRK6+PKCUXaDbC7qtbW8gIkhL7aGCsOr/C56SJMy/BCZfxd1nWzAOxSDPgVsmerOBYfNqltV9/hWCqBywINIR+5dIg6JTJ72pcEpEjcYgXkE2YEFXV1JHnsKgbLWNlhScqb2UmyRkQyytRLtL+38TGxkxCflmO+5Z8CSSNY7GidjMIZ7Q4zMjA2n1nGrlTDkzwDCsw+wqFPGQA179cnfGWOWRVruj16z6XyvxvjJwbz0wQZ75XK5tKSb7FNyeIEs4TT4jk+S4dhPeAUC5y+bDYirYgM4GC7uEnztnZyaVWQ7B381AK4Qdrwt51ZqExKbQpTUNn+EjqoTwvqNj4kqx5QUCI0ThS/YkOxJCXmPUWZbhjpCg56i+2aB6CmK2JGhn57K5mj0MNdBXA4/WnwH6XoPWJzK5Nyu2zB3nAZp+S5hpQs+p1vN1/wsjk=
+          ssh.github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
+          ssh.github.com ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEmKSENjQEezOmxkZMy7opKgwFB9nkt5YRrYMjNuG5N87uRgg6CLrbo5wAdT/y6v0mKV0U2w0WZ2YB/++Tpockg=
+          ssh.github.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCj7ndNxQowgcQnjshcLrqPEiiphnt+VTTvDP6mHBL9j1aNUkY4Ue1gvwnGLVlOhGeYrnZaMgRK6+PKCUXaDbC7qtbW8gIkhL7aGCsOr/C56SJMy/BCZfxd1nWzAOxSDPgVsmerOBYfNqltV9/hWCqBywINIR+5dIg6JTJ72pcEpEjcYgXkE2YEFXV1JHnsKgbLWNlhScqb2UmyRkQyytRLtL+38TGxkxCflmO+5Z8CSSNY7GidjMIZ7Q4zMjA2n1nGrlTDkzwDCsw+wqFPGQA179cnfGWOWRVruj16z6XyvxvjJwbz0wQZ75XK5tKSb7FNyeIEs4TT4jk+S4dhPeAUC5y+bDYirYgM4GC7uEnztnZyaVWQ7B381AK4Qdrwt51ZqExKbQpTUNn+EjqoTwvqNj4kqx5QUCI0ThS/YkOxJCXmPUWZbhjpCg56i+2aB6CmK2JGhn57K5mj0MNdBXA4/WnwH6XoPWJzK5Nyu2zB3nAZp+S5hpQs+p1vN1/wsjk=
+          [ssh.github.com]:443 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
+          [ssh.github.com]:443 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEmKSENjQEezOmxkZMy7opKgwFB9nkt5YRrYMjNuG5N87uRgg6CLrbo5wAdT/y6v0mKV0U2w0WZ2YB/++Tpockg=
+          [ssh.github.com]:443 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCj7ndNxQowgcQnjshcLrqPEiiphnt+VTTvDP6mHBL9j1aNUkY4Ue1gvwnGLVlOhGeYrnZaMgRK6+PKCUXaDbC7qtbW8gIkhL7aGCsOr/C56SJMy/BCZfxd1nWzAOxSDPgVsmerOBYfNqltV9/hWCqBywINIR+5dIg6JTJ72pcEpEjcYgXkE2YEFXV1JHnsKgbLWNlhScqb2UmyRkQyytRLtL+38TGxkxCflmO+5Z8CSSNY7GidjMIZ7Q4zMjA2n1nGrlTDkzwDCsw+wqFPGQA179cnfGWOWRVruj16z6XyvxvjJwbz0wQZ75XK5tKSb7FNyeIEs4TT4jk+S4dhPeAUC5y+bDYirYgM4GC7uEnztnZyaVWQ7B381AK4Qdrwt51ZqExKbQpTUNn+EjqoTwvqNj4kqx5QUCI0ThS/YkOxJCXmPUWZbhjpCg56i+2aB6CmK2JGhn57K5mj0MNdBXA4/WnwH6XoPWJzK5Nyu2zB3nAZp+S5hpQs+p1vN1/wsjk=
+          KNOWN_HOSTS
+            chmod 600 "$GITHUB_KNOWN_HOSTS"
+
+            GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=$GITHUB_KNOWN_HOSTS -o GlobalKnownHostsFile=/dev/null -o StrictHostKeyChecking=yes -o CheckHostIP=no"
+            export GIT_SSH_COMMAND
+          }
+
           ensure_repository_owner() {
             deploy_uid="$(id -u)"
             deploy_gid="$(id -g)"
@@ -168,9 +223,85 @@ jobs:
             sudo -n chown -R "$expected_owner" "$PRODUCTION_PATH"
           }
 
+          configure_docker_compose() {
+            if docker info >/dev/null 2>&1; then
+              DOCKER_COMPOSE=(docker compose)
+              return
+            fi
+
+            if sudo -n docker info >/dev/null 2>&1; then
+              DOCKER_COMPOSE=(sudo -n docker compose)
+              return
+            fi
+
+            echo "::error::Docker is not accessible for the deploy user $(id -un). Add the user to the docker group and start a new SSH session, or allow passwordless sudo for docker."
+            exit 1
+          }
+
+          docker_compose() {
+            "${DOCKER_COMPOSE[@]}" "$@" </dev/null
+          }
+
+          docker_compose_app_run() {
+            local entrypoint="$1"
+            shift
+
+            docker_compose run --rm --no-deps -T --entrypoint "$entrypoint" app "$@"
+          }
+
+          docker_compose_app_run_with_deps() {
+            local entrypoint="$1"
+            shift
+
+            docker_compose run --rm -T --entrypoint "$entrypoint" app "$@"
+          }
+
+          ensure_app_container_running() {
+            if docker_compose exec -T app true >/dev/null 2>&1; then
+              return
+            fi
+
+            echo "::error::The app container is not running after docker compose up."
+            docker_compose ps
+            return 1
+          }
+
+          backup_vendor_for_deploy() {
+            if [ ! -d vendor ]; then
+              return
+            fi
+
+            VENDOR_BACKUP_PATH="vendor.deploy-backup-$(date +%s)"
+            rm -rf "$VENDOR_BACKUP_PATH"
+            # Copy (not move) so the running app never loses vendor mid-deploy.
+            cp -a vendor "$VENDOR_BACKUP_PATH"
+          }
+
+          remove_vendor_backup() {
+            if [ -n "${VENDOR_BACKUP_PATH:-}" ] && [ -d "$VENDOR_BACKUP_PATH" ]; then
+              rm -rf "$VENDOR_BACKUP_PATH"
+            fi
+
+            VENDOR_BACKUP_PATH=""
+          }
+
+          restore_vendor_backup_on_error() {
+            if [ -z "${VENDOR_BACKUP_PATH:-}" ] || [ ! -d "$VENDOR_BACKUP_PATH" ]; then
+              return
+            fi
+
+            log "Restoring previous vendor directory after failed dependency install"
+            rm -rf vendor
+            mv "$VENDOR_BACKUP_PATH" vendor
+            VENDOR_BACKUP_PATH=""
+          }
+
           on_error() {
             status=$?
+            trap - ERR
             log "Deployment failed with exit code $status"
+            restore_vendor_backup_on_error
+            log "App container was left untouched and keeps serving the previous release"
             exit "$status"
           }
 
@@ -179,24 +310,73 @@ jobs:
           cd "$PRODUCTION_PATH"
           ensure_repository_owner
           ensure_git_safe_directory
+          ensure_github_known_hosts
+          configure_docker_compose
+          origin_url="$(git remote get-url origin)"
+          safe_origin_url="$(printf '%s' "$origin_url" | sed -E 's#(https?://)[^/@]+@#\1***@#')"
 
-          log "Updating application"
-          git pull origin main
+          # Resolve the branch this checkout tracks so master/main projects both
+          # deploy the right ref without editing this script.
+          DEPLOY_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 
-          log "Building and starting containers"
-          docker compose build app
-          docker compose up -d app redis
+          log "Ensuring supporting containers are running"
+          docker_compose up -d redis
 
-          log "Running deployment commands"
-          docker compose exec -T app composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
-          docker compose exec -T app php artisan migrate --force
-          docker compose exec -T app npm ci
-          docker compose exec -T app npm run build
+          log "Updating application from origin: $safe_origin_url ($DEPLOY_BRANCH)"
+          git fetch origin "$DEPLOY_BRANCH"
+          git reset --hard "origin/$DEPLOY_BRANCH"
+
+          # Build first; if the Dockerfile is unchanged this is a cached no-op
+          # and the running app keeps serving the previous release throughout.
+          log "Building app image"
+          docker_compose build app
+
+          # All preparation runs in ephemeral `run` containers, so the live app
+          # container is never stopped during the build.
+          log "Preparing production dependencies and assets"
+          docker_compose_app_run find bootstrap/cache -type f ! -name .gitignore -delete
+          backup_vendor_for_deploy
+          docker_compose_app_run composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+          docker_compose_app_run php -r 'if (is_dir("vendor/laravel/pail")) { fwrite(STDERR, "laravel/pail is still present after no-dev install\n"); exit(1); }'
+          remove_vendor_backup
+          docker_compose_app_run php artisan optimize:clear
+          docker_compose_app_run_with_deps php artisan migrate --force
+          docker_compose_app_run npm ci
+          docker_compose_app_run npm run build
           # Remove any stale Vite dev-server marker so @vite serves the
           # production build (public/build) instead of http://localhost:5173.
-          docker compose exec -T app rm -f public/hot
-          docker compose exec -T app php artisan config:cache
-          docker compose exec -T app php artisan octane:reload
+          docker_compose_app_run rm -f public/hot
+          docker_compose_app_run php artisan config:cache
 
+          # Swap in the new release. `up -d` first applies any image change
+          # (Dockerfile edit) and creates the container if missing. Then a full
+          # `restart` gives Octane a clean boot so it reliably picks up the new
+          # bind-mounted code and Vite manifest -- a graceful octane:reload is
+          # not dependable here, only a container restart is. Redis is left
+          # running so cache/sessions survive. Brief (~2-3s) downtime on the app
+          # only; the old release served throughout the entire build above.
+          log "Applying new release"
+          docker_compose up -d app redis
+          docker_compose restart app
+          ensure_app_container_running
           log "Deployment completed successfully"
           EOF
+
+      # Optional post-deploy smoke test. Set the PRODUCTION_HEALTHCHECK_URL
+      # secret to a public endpoint (e.g. https://app.example.com/health) and
+      # the deploy fails if the app does not return HTTP 200 after reload.
+      - name: "Smoke test"
+        if: "${{ env.PRODUCTION_HEALTHCHECK_URL != '' }}"
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5; do
+            code="$(curl -s -o /dev/null -w '%{http_code}' "$PRODUCTION_HEALTHCHECK_URL" || true)"
+            if [ "$code" = "200" ]; then
+              echo "Health check passed (HTTP $code)."
+              exit 0
+            fi
+            echo "Attempt $attempt: HTTP $code, retrying in 5s..."
+            sleep 5
+          done
+          echo "::error::Health check failed for $PRODUCTION_HEALTHCHECK_URL"
+          exit 1
