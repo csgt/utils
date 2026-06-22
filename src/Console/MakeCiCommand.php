@@ -6,8 +6,8 @@ use Illuminate\Console\Command;
 class MakeCiCommand extends Command
 {
     protected $signature = 'make:csgtci
-        {--php=8.3 : PHP version used by the CI job}
-        {--node=20 : Node version used by the CI job}
+        {--php= : PHP version used by the CI job (auto-detected from composer.json when omitted)}
+        {--node= : Node version used by the CI job (auto-detected from .nvmrc or package.json when omitted)}
         {--branch= : Branch that triggers CI/CD (auto-detected when omitted)}
         {--force : Overwrite the workflow if it already exists}';
 
@@ -19,7 +19,10 @@ class MakeCiCommand extends Command
 
     public function handle()
     {
-        if (!$this->validVersion('php') || !$this->validVersion('node')) {
+        $php = $this->resolvePhpVersion();
+        $node = $this->resolveNodeVersion();
+
+        if (!$this->validVersion('php', $php) || !$this->validVersion('node', $node)) {
             return self::FAILURE;
         }
 
@@ -43,21 +46,19 @@ class MakeCiCommand extends Command
 
         $contents = str_replace(
             ['{{PHP_VERSION}}', '{{NODE_VERSION}}', '{{BRANCH}}'],
-            [$this->option('php'), $this->option('node'), $branch],
+            [$php, $node, $branch],
             $contents
         );
 
         file_put_contents($destination, $contents);
 
-        $this->info('CI/CD workflow published correctly at ' . $this->destination . ' (branch: ' . $branch . ').');
+        $this->info('CI/CD workflow published correctly at ' . $this->destination . ' (branch: ' . $branch . ', php: ' . $php . ', node: ' . $node . ').');
 
         return self::SUCCESS;
     }
 
-    protected function validVersion(string $option): bool
+    protected function validVersion(string $option, string $value): bool
     {
-        $value = (string) $this->option($option);
-
         if (!preg_match('/^\d+(\.\d+)*$/', $value)) {
             $this->error('Invalid --' . $option . ' version: ' . $value);
 
@@ -65,6 +66,60 @@ class MakeCiCommand extends Command
         }
 
         return true;
+    }
+
+    protected function resolvePhpVersion(): string
+    {
+        if ($php = $this->option('php')) {
+            return $php;
+        }
+
+        $composer = base_path('composer.json');
+
+        if (is_file($composer)) {
+            $data = json_decode((string) file_get_contents($composer), true);
+
+            if (is_array($data)) {
+                $candidates = [
+                    $data['config']['platform']['php'] ?? null,
+                    $data['require']['php'] ?? null,
+                ];
+
+                foreach ($candidates as $candidate) {
+                    if (is_string($candidate) && preg_match('/\d+\.\d+/', $candidate, $matches)) {
+                        return $matches[0];
+                    }
+                }
+            }
+        }
+
+        return '8.3';
+    }
+
+    protected function resolveNodeVersion(): string
+    {
+        if ($node = $this->option('node')) {
+            return $node;
+        }
+
+        $nvmrc = base_path('.nvmrc');
+
+        if (is_file($nvmrc) && preg_match('/\d+(\.\d+)*/', (string) file_get_contents($nvmrc), $matches)) {
+            return $matches[0];
+        }
+
+        $package = base_path('package.json');
+
+        if (is_file($package)) {
+            $data = json_decode((string) file_get_contents($package), true);
+
+            if (is_array($data) && isset($data['engines']['node']) && is_string($data['engines']['node'])
+                && preg_match('/\d+(\.\d+)*/', $data['engines']['node'], $matches)) {
+                return $matches[0];
+            }
+        }
+
+        return '20';
     }
 
     protected function resolveBranch(): string

@@ -22,18 +22,18 @@ Publish a GitHub Actions workflow that runs CI (code style, tests, frontend buil
 php artisan make:csgtci
 ```
 
-This creates `.github/workflows/ci.yml`. The trigger/deploy branch is auto-detected (the repository's default branch), so it works for both `master` (legacy) and `main` (newer) projects. Set the PHP and Node versions to match the project:
+This creates `.github/workflows/ci.yml`. Everything is auto-detected so the bare command works without flags: the trigger/deploy branch is the repository's default branch (works for both `master` legacy and `main` newer projects), the PHP version is read from `composer.json` (`config.platform.php` or `require.php`), and the Node version from `.nvmrc` or `package.json` (`engines.node`). Pass flags only to override the detection:
 
 ```bash
 php artisan make:csgtci --php=8.2 --node=18 --branch=master
 ```
 
-| Option     | Default       | Description                                        |
-| ---------- | ------------- | -------------------------------------------------- |
-| `--php`    | 8.3           | PHP version used by the CI job                     |
-| `--node`   | 20            | Node version used by the CI job                    |
-| `--branch` | auto-detected | Branch that triggers CI and deployment             |
-| `--force`  | —             | Overwrite the workflow if it already exists        |
+| Option     | Default                          | Description                                        |
+| ---------- | -------------------------------- | -------------------------------------------------- |
+| `--php`    | auto-detected (`composer.json`)  | PHP version used by the CI job                     |
+| `--node`   | auto-detected (`.nvmrc`/`package.json`) | Node version used by the CI job             |
+| `--branch` | auto-detected                    | Branch that triggers CI and deployment             |
+| `--force`  | —                                | Overwrite the workflow if it already exists        |
 
 The `ci` job is universal and rarely needs editing. Projects without tests pass CI harmlessly: the test step skips when no `phpunit.xml` is present and becomes enforcing once tests exist.
 

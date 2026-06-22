@@ -11,6 +11,10 @@ env:
   PHP_VERSION: "{{PHP_VERSION}}"
   NODE_VERSION: "{{NODE_VERSION}}"
 
+# Least-privilege default: the automatic GITHUB_TOKEN can only read the repo.
+permissions:
+  contents: read
+
 jobs:
   # ---------------------------------------------------------------------------
   # Continuous Integration: runs on every push and pull request. Universal,
@@ -19,6 +23,7 @@ jobs:
   ci:
     name: "Continuous Integration"
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     # Superseded CI runs on the same branch/PR are cancelled: only the latest
     # commit matters and we save runner minutes.
     concurrency:
@@ -108,6 +113,7 @@ jobs:
   deploy:
     name: "Deploy to production"
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: ci
     if: "github.event_name == 'push' && github.ref == 'refs/heads/{{BRANCH}}'"
     environment: production
