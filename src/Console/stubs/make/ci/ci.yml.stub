@@ -347,11 +347,23 @@ jobs:
           remove_vendor_backup
           docker_compose_app_run php artisan optimize:clear
           docker_compose_app_run_with_deps php artisan migrate --force
-          docker_compose_app_run npm ci
-          docker_compose_app_run npm run build
-          # Remove any stale Vite dev-server marker so @vite serves the
-          # production build (public/build) instead of http://localhost:5173.
-          docker_compose_app_run rm -f public/hot
+
+          # Build the frontend only when the project has one, mirroring the CI
+          # guard so backend-only projects deploy without failing on npm.
+          if [ -f package.json ]; then
+            if [ -f package-lock.json ]; then
+              docker_compose_app_run npm ci
+            else
+              docker_compose_app_run npm install
+            fi
+            docker_compose_app_run npm run build
+            # Remove any stale Vite dev-server marker so @vite serves the
+            # production build (public/build) instead of http://localhost:5173.
+            docker_compose_app_run rm -f public/hot
+          else
+            log "No package.json found, skipping frontend build"
+          fi
+
           docker_compose_app_run php artisan config:cache
 
           # Swap in the new release. `up -d` first applies any image change
