@@ -31,7 +31,7 @@ class UtilsServiceProvider extends ServiceProvider
         ]);
 
         $this->commands([
-            Console\PublishCiCommand::class,
+            Console\MakeCiCommand::class,
         ]);
 
         $this->app->singleton('utils', function ($app) {
