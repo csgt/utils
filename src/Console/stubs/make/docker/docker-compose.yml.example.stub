@@ -11,12 +11,19 @@ services:
       - "127.0.0.1:80:81"
       - "127.0.0.1:5173:5173"
     restart: always
-    links:
-      - mysql
-      - redis
+    depends_on:
+      mysql:
+        condition: service_started
+      redis:
+        condition: service_healthy
   redis:
     image: redis:5.0
     restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
   mysql:
     build:
       context: ./
