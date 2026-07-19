@@ -92,6 +92,14 @@ class Utils
         }
     }
 
+    /**
+     * Returns Banguat's daily exchange rate, or 0 when the web service fails.
+     *
+     * The 0 return value is a CONTRACT: consuming projects check "si es 0 no
+     * se toma" and skip the value. Do NOT change this to throw an exception —
+     * it would break every project that relies on the sentinel (decision by
+     * management, 2026-07).
+     */
     public static function tipoCambio()
     {
         try {
