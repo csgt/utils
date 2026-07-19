@@ -1,4 +1,16 @@
-# CSGT Utils
+# csgt/utils (8.x)
+
+[![Tests](https://github.com/csgt/utils/actions/workflows/tests.yml/badge.svg?branch=8.x)](https://github.com/csgt/utils/actions/workflows/tests.yml)
+
+Internal Softlogic package that scaffolds and standardizes CSGT Laravel projects. It publishes the CI/CD pipeline (`make:csgtci`), the Docker environment (`make:csgtdocker`) and the standard documentation (`make:csgtdocs`), and ships the shared admin utilities used by every project (users/roles controllers, menu rendering and misc helpers).
+
+## Versions
+
+One branch per major version — every version is in active use by projects pinned to it, so fixes are applied to the branch of the affected version. This is the 8.x line:
+
+```bash
+composer require csgt/utils:^8.0
+```
 
 ## Docker
 
@@ -84,3 +96,14 @@ Asks label, field name and type and generates bootstrap's form group scaffold to
 [6.0]
 
 -   To use in Laravel CSGT using Laravel without laravel ui
+
+## Package development
+
+Work targets the branch of the affected version (this is 8.x). The test suite runs the scaffolding commands against a real Laravel skeleton via `orchestra/testbench`:
+
+```bash
+composer install
+composer test
+```
+
+Every push runs the suite on GitHub Actions across this branch's PHP matrix (`.github/workflows/tests.yml`). Releases are tags: a fix on a version branch ships by tagging the next patch on that branch (Composer installs tags, not branches).
