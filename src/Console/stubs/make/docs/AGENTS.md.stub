@@ -1,0 +1,95 @@
+# AGENTS.md
+
+This file provides guidance to AI coding agents (Claude Code, Codex, Gemini CLI, Cursor, etc.) when working with code in this repository. `CLAUDE.md` imports this file, so keep all agent guidance here — single source of truth.
+
+## Project
+
+<!-- EDIT: 2-4 lines: what this system does and for whom. Keep the stack paragraph below. -->
+_TODO: one-paragraph description of the project._
+
+Built on SoftLogic's internal `csgt/*` package suite (`csgt/cancerbero` route-based RBAC, `csgt/menu` auto-generated AdminLTE sidebar, `csgt/crud` CRUD base controllers, `csgt/utils` helpers and scaffolding commands). Runs on Laravel Octane (Swoole) inside Docker, PHP {{PHP_VERSION}}. See `README.md` for full setup/architecture docs and `vendor/csgt/*/README.md` for each package's own notes.
+
+## Commands
+
+All PHP/Artisan commands run inside the `app` container: `docker compose exec app <command>`.
+
+```bash
+# Environment setup (first time only)
+cp .env.example .env && cp docker-compose.yml.example docker-compose.yml
+docker compose up -d --build
+docker compose exec app composer install
+docker compose exec app php artisan key:generate
+docker compose exec app php artisan migrate
+
+# Tests
+docker compose exec app php artisan test
+docker compose exec app php artisan test --filter=TestName      # single test
+
+# Code style
+docker compose exec app vendor/bin/pint          # fix
+docker compose exec app vendor/bin/pint --test   # check only
+
+# Frontend (run on host, not in container)
+npm install
+npm run dev     # Vite dev server with HMR (localhost:5173)
+npm run build   # production bundle
+```
+
+`APP_ENV=production` by default in `.env`, so destructive Artisan commands (`migrate`, `db:seed`) require `--force`. Set `APP_ENV=local` in your own `.env` for local work to skip that.
+
+Bash aliases baked into the `app` image: `migrate`, `rollback`, `seed`, `seedgod` (= `db:seed --class=GodSeeder`), `cda` (= `composer dump-autoload`).
+
+## Conventions
+
+- **Commits**: simple, single-line Conventional Commits, in English (`feat: ...`, `fix: ...`, `chore: ...`). Add a body only when the change truly needs explaining. Never add co-author lines — human or AI.
+- **Migrations**: use descriptive names. Never write logic in `down()` — leave it empty. To undo a migration that already ran, write a **new** migration that reverts it, rather than editing/rolling back the old one; this keeps a full, linear history of schema changes.
+- **Don't reinvent the wheel**: before writing new logic, check what Laravel core and the `csgt/*` packages already provide (base CRUD controllers, `csgt/utils` helpers, Eloquent features) and use that first.
+- **Keep code simple and concise**: prefer the most direct expression of the logic — don't write five lines where Laravel/PHP idioms let you write one.
+- **Always enforce `cancerbero`**: every new protected route/catalog must go through the `cancerbero` middleware and have a matching `module_permission`. Never skip it, even for routes that feel low-risk.
+- **Routes mirror where the code lives**: a resource's URL segment must reflect its controller/folder, e.g. `catalogs/clients` ↔ `Catalogs\ClientsController`. Don't nest or rename routes in a way that hides which controller handles them.
+- **Handle errors the Laravel-native way**: prefer Form Requests (auto 422), Route Model Binding (auto 404), Policies/Gates (auto 403) and typed Exception classes with `render()` over manual `if`/`try-catch` blocks that hand-build error responses. Reserve `try/catch` for things Laravel can't handle for you (external API calls, file I/O).
+- **Always add timestamps**: every new table needs `$table->timestamps()` for auditability.
+- **Generated files are regenerated, not hand-edited**: `.github/workflows/ci.yml` (`make:csgtci`), `dockerfiles/` and `docker-compose.yml` (`make:csgtdocker`), `README.md`, `AGENTS.md` and `CLAUDE.md` skeletons (`make:csgtdocs`).
+- **Validation is always server-side**: every input goes through Form Requests / `validationRules`. Frontend validation is UX only — never the security boundary.
+- **Eloquent discipline**: eager-load relations with `with()` (no N+1 queries), never run queries inside loops, use `chunk()`/`cursor()` for large datasets.
+- **Money is `decimal`, never float**; dates always go through Carbon (no string date math).
+- **Language split**: code, comments and commits in English; user-facing strings (titles, labels, validation messages) in Spanish.
+
+## Agent workflow
+
+- **Before every commit**: run `vendor/bin/pint` (fix mode) and the test suite (`php artisan test` — at minimum the tests covering what you changed, the full suite when feasible); if the project has static analysis configured (Larastan/PHPStan), run it too. Remove any leftover `dd()`, `dump()`, `ray()` or `console.log`.
+- **Atomic commits**: one logical change per commit; don't mix refactors with features. Commit only what the task asked for — no drive-by changes.
+- **Ask before destructive operations** (`migrate:fresh`, `migrate:rollback`, `db:wipe`, dropping tables, bulk deletes) and never run them against a non-local database.
+- **Never commit secrets**: `.env` stays local; credentials come from env vars, never hardcoded in code or config.
+- **Dependencies are surgical**: never run blanket `composer update`/`npm update`; add or update only the package the task requires and commit the lockfile change together with the code that needs it.
+- **Don't create unrequested files**: no extra markdown docs, helper scripts or examples unless asked; documentation lives in `README.md` and this file.
+- **Out-of-scope bugs**: when you spot a bug outside the current task, don't fix it silently and don't ignore it — report it to the user, who decides whether to open a GitHub Issue.
+- **Write Feature tests for every catalog/endpoint**, covering at least: guest → redirected to login; authenticated but unauthorized → 401; authorized → 200 on index; store with valid data persists (FK fields validated with `exists:table,id`, not just `required`); store with missing required field → 422 and nothing persisted; update persists the change; destroy removes the row.
+
+## Architecture
+
+### ACL
+
+Modules, routes, menu entries and permissions are data-driven and built by seeders; `role_module_permissions` joins roles to `module_permissions` (e.g. `catalogs.users.index`) and the `cancerbero` middleware checks the current route against the authenticated user's permissions. The backdoor/god role (`config/csgtcancerbero.php` → `backdoor_role`) is granted every permission by `GodSeeder`.
+
+**To add a new catalog/module**: create the controller under `app/Http/Controllers/Catalogs/` extending the matching `csgt/crud`/`csgt/utils` base controller, register the resource route inside the `auth + cancerbero` group in `routes/web.php`, add the model/migration, declare the module/permissions in the project's seeders, then re-run `php artisan db:seed --force` followed by `seedgod`.
+
+<!-- EDIT: document where THIS project declares its modules (e.g. database/seeders/Sections.php) and any deviation from the standard flow. If this Architecture section outgrows the file, extract it to docs/ARCHITECTURE.md and leave a summary + pointer here. -->
+
+### Runtime
+
+- Docker services: `app` (Octane/Swoole, ports 80→81 and 5173), `mysql` (port 33061→3306), `redis` (internal only). `DB_HOST=mysql` in `.env` must match the compose service name.
+- Octane keeps code in memory: restart the `app` container after significant backend changes.
+
+### Frontend
+
+Vue 3 (SFCs) + AdminLTE, built with Vite (Node {{NODE_VERSION}}) from `resources/js/app.js`.
+
+<!-- EDIT: note this project's frontend particularities (extra libraries, DataTables, leftover deps, etc.). -->
+
+## Cautions and known issues
+
+Long-lived quirks and vendor limitations are documented HERE so agents don't "fix" them or trip over them. Active bugs do NOT live in this file — they go to GitHub Issues, where they can be assigned, linked to PRs and closed.
+
+<!-- EDIT: sensitive modules, tables an agent must not touch, known vendor limitations, landmines. Example: "csgt/crud's CrudController::update() 500s on a nonexistent id — known vendor limitation, don't fix locally; tests document the current behavior." -->
+_TODO: list what an agent must be careful with in this project._
