@@ -1,0 +1,43 @@
+name: "Tests"
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: "PHP ${{ matrix.php }} / Testbench ${{ matrix.testbench }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - php: "8.2"
+            testbench: "8.*"
+          - php: "8.3"
+            testbench: "9.*"
+          - php: "8.4"
+            testbench: "9.*"
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@v6
+
+      - name: "Setup PHP"
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "${{ matrix.php }}"
+          extensions: mbstring, dom, fileinfo, intl, soap
+          coverage: none
+          tools: composer:v2
+
+      - name: "Install dependencies"
+        run: |
+          composer require --dev --no-update "orchestra/testbench:${{ matrix.testbench }}"
+          composer update --prefer-dist --no-interaction --no-progress --no-security-blocking
+
+      - name: "Run tests"
+        run: vendor/bin/phpunit
