@@ -1,4 +1,16 @@
-# CSGT Utils (5.7)
+# csgt/utils (5.7)
+
+[![Tests](https://github.com/csgt/utils/actions/workflows/tests.yml/badge.svg?branch=5.7)](https://github.com/csgt/utils/actions/workflows/tests.yml)
+
+Internal Softlogic package that scaffolds and standardizes CSGT Laravel projects. It publishes the CI/CD pipeline (`make:csgtci`), the Docker environment (`make:csgtdocker`) and the standard documentation (`make:csgtdocs`), and ships the shared admin utilities used by every project (users/roles controllers, menu rendering and misc helpers).
+
+## Versions
+
+One branch per major version — every version is in active use by projects pinned to it, so fixes are applied to the branch of the affected version. This is the 5.7 line:
+
+```bash
+composer require csgt/utils:^5.7
+```
 
 ## CI/CD Pipeline
 
@@ -58,3 +70,14 @@ Project name, repository (for the CI badge), PHP and Node versions are auto-dete
 | `--php`   | auto-detected (`composer.json`) | PHP version shown in the docs                |
 | `--node`  | auto-detected (`.nvmrc`/`package.json`) | Node version shown in the docs       |
 | `--force` | —                               | Overwrite the generated files if present     |
+
+## Package development
+
+Work targets the branch of the affected version (this is 5.7). The test suite runs the scaffolding commands against a real Laravel skeleton via `orchestra/testbench`:
+
+```bash
+composer install
+composer test
+```
+
+Every push runs the suite on GitHub Actions across this branch's PHP matrix (`.github/workflows/tests.yml`). Releases are tags: a fix on a version branch ships by tagging the next patch on that branch (Composer installs tags, not branches).
