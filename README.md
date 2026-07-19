@@ -1,12 +1,20 @@
-[7.0]
-- To use in Laravel CSGT using laravel ui
+# csgt/utils (6.0)
 
-[6.0]
-- To use in Laravel CSGT using Laravel without laravel ui
+[![Tests](https://github.com/csgt/utils/actions/workflows/tests.yml/badge.svg?branch=6.0)](https://github.com/csgt/utils/actions/workflows/tests.yml)
 
-Bootstrap scaffolding method
+Internal Softlogic package that scaffolds and standardizes CSGT Laravel projects. It publishes the CI/CD pipeline (`make:csgtci`), the Docker environment (`make:csgtdocker`) and the standard documentation (`make:csgtdocs`), and ships the shared admin utilities used by every project (users/roles controllers, menu rendering and misc helpers).
 
-make:csgtscaffold
+## Versions
+
+One branch per major version — every version is in active use by projects pinned to it, so fixes are applied to the branch of the affected version. This is the 6.0 line (Laravel CSGT without laravel ui; 7.0 is the same with laravel ui):
+
+```bash
+composer require csgt/utils:^6.0
+```
+
+## Bootstrap scaffolding method
+
+`make:csgtscaffold`
 
 Asks label, field name and type and generates bootstrap's form group scaffold to copy into your code, including validation classes.
 
@@ -68,3 +76,14 @@ Project name, repository (for the CI badge), PHP and Node versions are auto-dete
 | `--php`   | auto-detected (`composer.json`) | PHP version shown in the docs                |
 | `--node`  | auto-detected (`.nvmrc`/`package.json`) | Node version shown in the docs       |
 | `--force` | —                               | Overwrite the generated files if present     |
+
+## Package development
+
+Work targets the branch of the affected version (this is 6.0). The test suite runs the scaffolding commands against a real Laravel skeleton via `orchestra/testbench`:
+
+```bash
+composer install
+composer test
+```
+
+Every push runs the suite on GitHub Actions across this branch's PHP matrix (`.github/workflows/tests.yml`). Releases are tags: a fix on a version branch ships by tagging the next patch on that branch (Composer installs tags, not branches).
