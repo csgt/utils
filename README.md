@@ -52,3 +52,25 @@ The `deploy` job targets the nginx/php-fpm Docker stack published by `make:csgtd
 | `PRODUCTION_HEALTHCHECK_URL` | no       | URL checked after deploy; deploy fails if not HTTP 200 |
 
 CI runs are cancelled when superseded by a newer commit, but deployments are never cancelled mid-flight (concurrent pushes queue) to avoid leaving the server half-migrated.
+
+## Documentation
+
+Publish the standard project documentation:
+
+```bash
+php artisan make:csgtdocs
+```
+
+This creates three files from company-wide templates:
+
+- `README.md` — stack, local setup, frequent commands, CI/CD summary, plus clearly marked `EDIT`/`TODO` sections for the project's business domain.
+- `AGENTS.md` — guidance for AI coding agents (the cross-tool standard read by Codex, Gemini CLI, Cursor, etc.): stack, CSGT conventions (commits, migrations, ACL, CRUD pattern, testing checklist, generated files), environment commands, plus editable project-context sections.
+- `CLAUDE.md` — a two-line pointer that imports `AGENTS.md` for Claude Code, so the guidance lives in a single tool-agnostic file.
+
+Project name, repository (for the CI badge), PHP and Node versions are auto-detected (`composer.json`, git remote, `.nvmrc`). Existing files are never overwritten unless `--force` is passed. After generating, search for the `EDIT`/`TODO` markers and fill in the project-specific sections.
+
+| Option    | Default                         | Description                                  |
+| --------- | ------------------------------- | -------------------------------------------- |
+| `--php`   | auto-detected (`composer.json`) | PHP version shown in the docs                |
+| `--node`  | auto-detected (`.nvmrc`/`package.json`) | Node version shown in the docs       |
+| `--force` | —                               | Overwrite the generated files if present     |

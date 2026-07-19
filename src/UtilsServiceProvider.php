@@ -34,6 +34,10 @@ class UtilsServiceProvider extends ServiceProvider
             Console\MakeCiCommand::class,
         ]);
 
+        $this->commands([
+            Console\MakeDocsCommand::class,
+        ]);
+
         $this->app->singleton('utils', function ($app) {
             return new Utils;
         });
