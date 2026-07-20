@@ -1,5 +1,6 @@
 /bootstrap/compiled.php
 /vendor
+.phpunit.result.cache
 composer.phar
 composer.lock
 .env.*.php
