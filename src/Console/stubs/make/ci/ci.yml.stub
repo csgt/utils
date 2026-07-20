@@ -1,0 +1,466 @@
+name: "CI/CD Pipeline"
+
+on:
+  push:
+    branches: ["{{BRANCH}}"]
+  pull_request:
+    branches: ["{{BRANCH}}"]
+
+# Per-project configuration. Adjust these to match each project's stack.
+env:
+  PHP_VERSION: "{{PHP_VERSION}}"
+  NODE_VERSION: "{{NODE_VERSION}}"
+
+# Least-privilege default: the automatic GITHUB_TOKEN can only read the repo.
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Continuous Integration: runs on every push and pull request. Universal,
+  # rarely needs editing between projects.
+  # ---------------------------------------------------------------------------
+  ci:
+    name: "Continuous Integration"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Superseded CI runs on the same branch/PR are cancelled: only the latest
+    # commit matters and we save runner minutes.
+    concurrency:
+      group: "ci-${{ github.workflow }}-${{ github.ref }}"
+      cancel-in-progress: true
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@v6
+
+      # If the project's old dependencies fail to resolve with Composer v2,
+      # change "composer:v2" to "composer:v1".
+      - name: "Setup PHP"
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "${{ env.PHP_VERSION }}"
+          extensions: mbstring, dom, fileinfo, bcmath, intl, gd, zip, pdo_sqlite, sqlite3
+          coverage: none
+          tools: composer:v2
+
+      - name: "Get Composer cache directory"
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: "Cache Composer dependencies"
+        uses: actions/cache@v5
+        with:
+          path: "${{ steps.composer-cache.outputs.dir }}"
+          key: "${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}"
+          restore-keys: "${{ runner.os }}-composer-"
+
+      - name: "Install Composer dependencies"
+        run: composer install --prefer-dist --no-interaction --no-progress --no-ansi
+
+      - name: "Prepare application environment"
+        run: |
+          [ -f .env ] || { [ -f .env.example ] && cp .env.example .env; }
+          if [ -f .env ]; then
+            php artisan key:generate
+          else
+            echo "No .env or .env.example found, skipping key:generate."
+          fi
+
+      # Style check is non-blocking on purpose so CI can be adopted on legacy
+      # projects without forcing an immediate full reformat. Once the codebase
+      # is clean, remove "continue-on-error" to make it enforcing.
+      - name: "Check code style (Pint)"
+        continue-on-error: true
+        run: |
+          if [ -f vendor/bin/pint ]; then
+            vendor/bin/pint --test
+          else
+            echo "Pint is not installed, skipping style check."
+          fi
+
+      # Most legacy projects have no tests yet. When a PHPUnit configuration is
+      # present the suite runs and IS enforcing; otherwise the step skips
+      # cleanly. PHPUnit is invoked directly because "php artisan test" does
+      # not exist on the Laravel versions this branch supports.
+      - name: "Run tests"
+        run: |
+          if [ -f phpunit.xml ] || [ -f phpunit.xml.dist ]; then
+            vendor/bin/phpunit
+          else
+            echo "No PHPUnit configuration found, skipping tests."
+          fi
+
+      - name: "Setup Node"
+        uses: actions/setup-node@v6
+        with:
+          node-version: "${{ env.NODE_VERSION }}"
+
+      # Projects of this generation build assets with Laravel Mix
+      # ("production"/"prod" scripts); "build" is checked last as a fallback.
+      # The right script is detected from package.json.
+      - name: "Build frontend assets"
+        run: |
+          if [ -f package.json ]; then
+            if [ -f package-lock.json ]; then
+              npm ci
+            else
+              npm install
+            fi
+            if node -e "process.exit((require('./package.json').scripts||{}).production ? 0 : 1)"; then
+              npm run production
+            elif node -e "process.exit((require('./package.json').scripts||{}).prod ? 0 : 1)"; then
+              npm run prod
+            elif node -e "process.exit((require('./package.json').scripts||{}).build ? 0 : 1)"; then
+              npm run build
+            else
+              echo "No production/prod/build script found in package.json, skipping asset build."
+            fi
+          else
+            echo "No package.json found, skipping frontend build."
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Continuous Deployment: only runs on pushes to the deploy branch, and only
+  # if "ci" passed. This block targets the nginx/php-fpm Docker stack published
+  # by make:csgtdocker on this version (services nginx, php, scheduler,
+  # horizon, mysql). It is a template: REVIEW it against how this project's
+  # server actually deploys before enabling it.
+  # ---------------------------------------------------------------------------
+  deploy:
+    name: "Deploy to production"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: ci
+    if: "github.event_name == 'push' && github.ref == 'refs/heads/{{BRANCH}}'"
+    environment: production
+    # Deploys are NEVER cancelled mid-flight: concurrent pushes queue instead of
+    # killing a running deployment (which could leave the server half-migrated).
+    concurrency:
+      group: "deploy-${{ github.workflow }}-${{ github.ref }}"
+      cancel-in-progress: false
+    env:
+      PRODUCTION_HEALTHCHECK_URL: ${{ secrets.PRODUCTION_HEALTHCHECK_URL }}
+    steps:
+      - name: "Deploy on production server"
+        env:
+          PRODUCTION_HOST: ${{ secrets.PRODUCTION_HOST }}
+          PRODUCTION_USER: ${{ secrets.PRODUCTION_USER }}
+          PRODUCTION_PATH: ${{ secrets.PRODUCTION_PATH }}
+          PRODUCTION_SSH_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
+          PRODUCTION_SSH_PORT: ${{ secrets.PRODUCTION_SSH_PORT }}
+          PRODUCTION_SSH_KNOWN_HOSTS: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+
+          SSH_PORT="${PRODUCTION_SSH_PORT:-22}"
+          REMOTE_PATH="$(printf '%q' "$PRODUCTION_PATH")"
+
+          [ -n "${PRODUCTION_HOST:-}" ] || { echo "::error::PRODUCTION_HOST is empty"; exit 1; }
+          [ -n "${PRODUCTION_USER:-}" ] || { echo "::error::PRODUCTION_USER is empty"; exit 1; }
+          [ -n "${PRODUCTION_PATH:-}" ] || { echo "::error::PRODUCTION_PATH is empty"; exit 1; }
+          [ -n "${PRODUCTION_SSH_KEY:-}" ] || { echo "::error::PRODUCTION_SSH_KEY is empty"; exit 1; }
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$PRODUCTION_SSH_KEY" | tr -d '\r' > ~/.ssh/production_deploy_key
+          chmod 600 ~/.ssh/production_deploy_key
+
+          if ! ssh-keygen -y -P "" -f ~/.ssh/production_deploy_key > ~/.ssh/production_deploy_key.pub; then
+            echo "::error::PRODUCTION_SSH_KEY is not a readable unencrypted private key. Use a deploy key without a passphrase, or add ssh-agent/passphrase handling."
+            exit 1
+          fi
+
+          # Pin the host key via the PRODUCTION_SSH_KNOWN_HOSTS secret to prevent
+          # man-in-the-middle attacks. Without it we fall back to ssh-keyscan
+          # (trust on first use), which is convenient but less secure.
+          if [ -n "${PRODUCTION_SSH_KNOWN_HOSTS:-}" ]; then
+            printf '%s\n' "$PRODUCTION_SSH_KNOWN_HOSTS" >> ~/.ssh/known_hosts
+          else
+            echo "::warning::PRODUCTION_SSH_KNOWN_HOSTS not set; falling back to ssh-keyscan (trust on first use). Pin the host key for production."
+            ssh-keyscan -p "$SSH_PORT" -H "$PRODUCTION_HOST" >> ~/.ssh/known_hosts
+          fi
+
+          ssh \
+            -i ~/.ssh/production_deploy_key \
+            -p "$SSH_PORT" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o PreferredAuthentications=publickey \
+            -o PubkeyAuthentication=yes \
+            -o PasswordAuthentication=no \
+            -o ConnectTimeout=30 \
+            "$PRODUCTION_USER@$PRODUCTION_HOST" \
+            "PRODUCTION_PATH=$REMOTE_PATH bash -se" << 'EOF'
+          set -euo pipefail
+
+          log() {
+            printf '\n[%s] %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$1"
+          }
+
+          ensure_git_safe_directory() {
+            if git config --global --get-all safe.directory | grep -Fxq "$PRODUCTION_PATH"; then
+              return
+            fi
+
+            git config --global --add safe.directory "$PRODUCTION_PATH"
+          }
+
+          ensure_github_known_hosts() {
+            mkdir -p ~/.ssh
+            chmod 700 ~/.ssh
+
+            GITHUB_KNOWN_HOSTS="$HOME/.ssh/github_known_hosts"
+
+            # GitHub's published SSH host keys:
+            # https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints
+            cat > "$GITHUB_KNOWN_HOSTS" << 'KNOWN_HOSTS'
+          github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
+          github.com ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEmKSENjQEezOmxkZMy7opKgwFB9nkt5YRrYMjNuG5N87uRgg6CLrbo5wAdT/y6v0mKV0U2w0WZ2YB/++Tpockg=
+          github.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCj7ndNxQowgcQnjshcLrqPEiiphnt+VTTvDP6mHBL9j1aNUkY4Ue1gvwnGLVlOhGeYrnZaMgRK6+PKCUXaDbC7qtbW8gIkhL7aGCsOr/C56SJMy/BCZfxd1nWzAOxSDPgVsmerOBYfNqltV9/hWCqBywINIR+5dIg6JTJ72pcEpEjcYgXkE2YEFXV1JHnsKgbLWNlhScqb2UmyRkQyytRLtL+38TGxkxCflmO+5Z8CSSNY7GidjMIZ7Q4zMjA2n1nGrlTDkzwDCsw+wqFPGQA179cnfGWOWRVruj16z6XyvxvjJwbz0wQZ75XK5tKSb7FNyeIEs4TT4jk+S4dhPeAUC5y+bDYirYgM4GC7uEnztnZyaVWQ7B381AK4Qdrwt51ZqExKbQpTUNn+EjqoTwvqNj4kqx5QUCI0ThS/YkOxJCXmPUWZbhjpCg56i+2aB6CmK2JGhn57K5mj0MNdBXA4/WnwH6XoPWJzK5Nyu2zB3nAZp+S5hpQs+p1vN1/wsjk=
+          [github.com]:22 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
+          [github.com]:22 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEmKSENjQEezOmxkZMy7opKgwFB9nkt5YRrYMjNuG5N87uRgg6CLrbo5wAdT/y6v0mKV0U2w0WZ2YB/++Tpockg=
+          [github.com]:22 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCj7ndNxQowgcQnjshcLrqPEiiphnt+VTTvDP6mHBL9j1aNUkY4Ue1gvwnGLVlOhGeYrnZaMgRK6+PKCUXaDbC7qtbW8gIkhL7aGCsOr/C56SJMy/BCZfxd1nWzAOxSDPgVsmerOBYfNqltV9/hWCqBywINIR+5dIg6JTJ72pcEpEjcYgXkE2YEFXV1JHnsKgbLWNlhScqb2UmyRkQyytRLtL+38TGxkxCflmO+5Z8CSSNY7GidjMIZ7Q4zMjA2n1nGrlTDkzwDCsw+wqFPGQA179cnfGWOWRVruj16z6XyvxvjJwbz0wQZ75XK5tKSb7FNyeIEs4TT4jk+S4dhPeAUC5y+bDYirYgM4GC7uEnztnZyaVWQ7B381AK4Qdrwt51ZqExKbQpTUNn+EjqoTwvqNj4kqx5QUCI0ThS/YkOxJCXmPUWZbhjpCg56i+2aB6CmK2JGhn57K5mj0MNdBXA4/WnwH6XoPWJzK5Nyu2zB3nAZp+S5hpQs+p1vN1/wsjk=
+          ssh.github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
+          ssh.github.com ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEmKSENjQEezOmxkZMy7opKgwFB9nkt5YRrYMjNuG5N87uRgg6CLrbo5wAdT/y6v0mKV0U2w0WZ2YB/++Tpockg=
+          ssh.github.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCj7ndNxQowgcQnjshcLrqPEiiphnt+VTTvDP6mHBL9j1aNUkY4Ue1gvwnGLVlOhGeYrnZaMgRK6+PKCUXaDbC7qtbW8gIkhL7aGCsOr/C56SJMy/BCZfxd1nWzAOxSDPgVsmerOBYfNqltV9/hWCqBywINIR+5dIg6JTJ72pcEpEjcYgXkE2YEFXV1JHnsKgbLWNlhScqb2UmyRkQyytRLtL+38TGxkxCflmO+5Z8CSSNY7GidjMIZ7Q4zMjA2n1nGrlTDkzwDCsw+wqFPGQA179cnfGWOWRVruj16z6XyvxvjJwbz0wQZ75XK5tKSb7FNyeIEs4TT4jk+S4dhPeAUC5y+bDYirYgM4GC7uEnztnZyaVWQ7B381AK4Qdrwt51ZqExKbQpTUNn+EjqoTwvqNj4kqx5QUCI0ThS/YkOxJCXmPUWZbhjpCg56i+2aB6CmK2JGhn57K5mj0MNdBXA4/WnwH6XoPWJzK5Nyu2zB3nAZp+S5hpQs+p1vN1/wsjk=
+          [ssh.github.com]:443 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
+          [ssh.github.com]:443 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEmKSENjQEezOmxkZMy7opKgwFB9nkt5YRrYMjNuG5N87uRgg6CLrbo5wAdT/y6v0mKV0U2w0WZ2YB/++Tpockg=
+          [ssh.github.com]:443 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCj7ndNxQowgcQnjshcLrqPEiiphnt+VTTvDP6mHBL9j1aNUkY4Ue1gvwnGLVlOhGeYrnZaMgRK6+PKCUXaDbC7qtbW8gIkhL7aGCsOr/C56SJMy/BCZfxd1nWzAOxSDPgVsmerOBYfNqltV9/hWCqBywINIR+5dIg6JTJ72pcEpEjcYgXkE2YEFXV1JHnsKgbLWNlhScqb2UmyRkQyytRLtL+38TGxkxCflmO+5Z8CSSNY7GidjMIZ7Q4zMjA2n1nGrlTDkzwDCsw+wqFPGQA179cnfGWOWRVruj16z6XyvxvjJwbz0wQZ75XK5tKSb7FNyeIEs4TT4jk+S4dhPeAUC5y+bDYirYgM4GC7uEnztnZyaVWQ7B381AK4Qdrwt51ZqExKbQpTUNn+EjqoTwvqNj4kqx5QUCI0ThS/YkOxJCXmPUWZbhjpCg56i+2aB6CmK2JGhn57K5mj0MNdBXA4/WnwH6XoPWJzK5Nyu2zB3nAZp+S5hpQs+p1vN1/wsjk=
+          KNOWN_HOSTS
+            chmod 600 "$GITHUB_KNOWN_HOSTS"
+
+            GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=$GITHUB_KNOWN_HOSTS -o GlobalKnownHostsFile=/dev/null -o StrictHostKeyChecking=yes -o CheckHostIP=no"
+            export GIT_SSH_COMMAND
+          }
+
+          ensure_repository_owner() {
+            deploy_uid="$(id -u)"
+            deploy_gid="$(id -g)"
+            expected_owner="$deploy_uid:$deploy_gid"
+
+            if [ -w "$PRODUCTION_PATH/.git" ] && { [ ! -e "$PRODUCTION_PATH/.git/FETCH_HEAD" ] || [ -w "$PRODUCTION_PATH/.git/FETCH_HEAD" ]; }; then
+              return
+            fi
+
+            sudo -n chown -R "$expected_owner" "$PRODUCTION_PATH"
+          }
+
+          # Servers of this generation may have Compose v2 (docker compose) or
+          # the standalone v1 binary (docker-compose). Detect what is available.
+          configure_docker_compose() {
+            if docker compose version >/dev/null 2>&1; then
+              DOCKER_COMPOSE=(docker compose)
+              return
+            fi
+
+            if command -v docker-compose >/dev/null 2>&1 && docker-compose version >/dev/null 2>&1; then
+              DOCKER_COMPOSE=(docker-compose)
+              return
+            fi
+
+            if sudo -n docker compose version >/dev/null 2>&1; then
+              DOCKER_COMPOSE=(sudo -n docker compose)
+              return
+            fi
+
+            if sudo -n docker-compose version >/dev/null 2>&1; then
+              DOCKER_COMPOSE=(sudo -n docker-compose)
+              return
+            fi
+
+            echo "::error::Docker Compose is not accessible for the deploy user $(id -un). Add the user to the docker group and start a new SSH session, or allow passwordless sudo for docker."
+            exit 1
+          }
+
+          docker_compose() {
+            "${DOCKER_COMPOSE[@]}" "$@" </dev/null
+          }
+
+          php_exec() {
+            docker_compose exec -T php "$@"
+          }
+
+          ensure_php_container_running() {
+            if php_exec true >/dev/null 2>&1; then
+              return
+            fi
+
+            echo "::error::The php container is not running. Start the stack with docker compose up -d first."
+            docker_compose ps
+            exit 1
+          }
+
+          # The php-fpm image published by make:csgtdocker does not bundle
+          # Composer. Prefer a composer binary inside the container (if this
+          # project added one to its image), otherwise fall back to the host's.
+          configure_composer() {
+            if php_exec sh -c 'command -v composer' >/dev/null 2>&1; then
+              COMPOSER_MODE="container"
+              return
+            fi
+
+            if command -v composer >/dev/null 2>&1 && command -v php >/dev/null 2>&1; then
+              COMPOSER_MODE="host"
+              return
+            fi
+
+            echo "::error::Composer was found neither inside the php container nor on the host. Install it, or adjust this step to the server's deploy routine."
+            exit 1
+          }
+
+          run_composer() {
+            if [ "$COMPOSER_MODE" = "container" ]; then
+              php_exec composer "$@"
+            else
+              composer "$@"
+            fi
+          }
+
+          restart_if_present() {
+            if docker_compose ps --services | grep -qx "$1"; then
+              docker_compose restart "$1"
+            fi
+          }
+
+          backup_vendor_for_deploy() {
+            if [ ! -d vendor ]; then
+              return
+            fi
+
+            VENDOR_BACKUP_PATH="vendor.deploy-backup-$(date +%s)"
+            rm -rf "$VENDOR_BACKUP_PATH"
+            # Copy (not move) so the running app never loses vendor mid-deploy.
+            cp -a vendor "$VENDOR_BACKUP_PATH"
+          }
+
+          remove_vendor_backup() {
+            if [ -n "${VENDOR_BACKUP_PATH:-}" ] && [ -d "$VENDOR_BACKUP_PATH" ]; then
+              rm -rf "$VENDOR_BACKUP_PATH"
+            fi
+
+            VENDOR_BACKUP_PATH=""
+          }
+
+          restore_vendor_backup_on_error() {
+            if [ -z "${VENDOR_BACKUP_PATH:-}" ] || [ ! -d "$VENDOR_BACKUP_PATH" ]; then
+              return
+            fi
+
+            log "Restoring previous vendor directory after failed dependency install"
+            rm -rf vendor
+            mv "$VENDOR_BACKUP_PATH" vendor
+            VENDOR_BACKUP_PATH=""
+          }
+
+          on_error() {
+            status=$?
+            trap - ERR
+            log "Deployment failed with exit code $status"
+            restore_vendor_backup_on_error
+            log "The php container was left untouched and keeps serving the previous release"
+            exit "$status"
+          }
+
+          trap on_error ERR
+
+          cd "$PRODUCTION_PATH"
+          ensure_repository_owner
+          ensure_git_safe_directory
+          ensure_github_known_hosts
+          configure_docker_compose
+          ensure_php_container_running
+          configure_composer
+          origin_url="$(git remote get-url origin)"
+          safe_origin_url="$(printf '%s' "$origin_url" | sed -E 's#(https?://)[^/@]+@#\1***@#')"
+
+          # Resolve the branch this checkout tracks so master/main projects both
+          # deploy the right ref without editing this script.
+          DEPLOY_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+
+          log "Updating application from origin: $safe_origin_url ($DEPLOY_BRANCH)"
+          git fetch origin "$DEPLOY_BRANCH"
+          git reset --hard "origin/$DEPLOY_BRANCH"
+
+          # Rebuild images; when the dockerfiles are unchanged this is a cached
+          # no-op and the running containers keep serving the previous release.
+          log "Building images"
+          docker_compose build
+
+          log "Installing production dependencies"
+          php_exec find bootstrap/cache -type f ! -name .gitignore -delete
+          backup_vendor_for_deploy
+          run_composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+          remove_vendor_backup
+
+          log "Running database migrations"
+          php_exec php artisan migrate --force
+
+          # Frontend build runs with the host's npm: the php-fpm image has no
+          # Node. Skips cleanly for backend-only projects; adjust if this
+          # project builds assets somewhere else.
+          if [ -f package.json ]; then
+            if command -v npm >/dev/null 2>&1; then
+              if [ -f package-lock.json ]; then
+                npm ci
+              else
+                npm install
+              fi
+              if node -e "process.exit((require('./package.json').scripts||{}).production ? 0 : 1)"; then
+                npm run production
+              elif node -e "process.exit((require('./package.json').scripts||{}).prod ? 0 : 1)"; then
+                npm run prod
+              elif node -e "process.exit((require('./package.json').scripts||{}).build ? 0 : 1)"; then
+                npm run build
+              else
+                echo "No production/prod/build script found in package.json, skipping asset build."
+              fi
+              # Remove any stale dev-server marker so assets are served from
+              # the production build instead of the local dev server.
+              rm -f public/hot
+            else
+              echo "::warning::npm is not available on the host; frontend assets were NOT rebuilt. Build them manually or adjust this step."
+            fi
+          else
+            log "No package.json found, skipping frontend build"
+          fi
+
+          # Clear framework caches with commands available on every Laravel
+          # version this branch supports (optimize:clear appeared later).
+          log "Refreshing framework caches"
+          php_exec php artisan config:clear
+          php_exec php artisan cache:clear
+          php_exec php artisan view:clear
+          php_exec php artisan route:clear
+          php_exec php artisan config:cache
+
+          # Apply the new release: `up -d` recreates containers whose image or
+          # config changed, then php and the artisan workers restart so
+          # php-fpm's opcache and the long-running processes pick up the new
+          # code. nginx serves the bind-mounted files and needs no restart.
+          log "Applying new release"
+          docker_compose up -d
+          restart_if_present php
+          restart_if_present scheduler
+          restart_if_present horizon
+          ensure_php_container_running
+          log "Deployment completed successfully"
+          EOF
+
+      # Optional post-deploy smoke test. Set the PRODUCTION_HEALTHCHECK_URL
+      # secret to a public endpoint (e.g. https://app.example.com/health) and
+      # the deploy fails if the app does not return HTTP 200 after reload.
+      - name: "Smoke test"
+        if: "${{ env.PRODUCTION_HEALTHCHECK_URL != '' }}"
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5; do
+            code="$(curl -s -o /dev/null -w '%{http_code}' "$PRODUCTION_HEALTHCHECK_URL" || true)"
+            if [ "$code" = "200" ]; then
+              echo "Health check passed (HTTP $code)."
+              exit 0
+            fi
+            echo "Attempt $attempt: HTTP $code, retrying in 5s..."
+            sleep 5
+          done
+          echo "::error::Health check failed for $PRODUCTION_HEALTHCHECK_URL"
+          exit 1
