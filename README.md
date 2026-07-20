@@ -1,6 +1,16 @@
-# Utils
+# csgt/utils
 
-This package is used as utilities for the csgt packages.
+[![Tests](https://github.com/csgt/utils/actions/workflows/tests.yml/badge.svg)](https://github.com/csgt/utils/actions/workflows/tests.yml)
+
+Internal Softlogic package that scaffolds and standardizes CSGT Laravel projects. It publishes the CI/CD pipeline (`make:csgtci`), the Docker environment (`make:csgtdocker`) and the standard documentation (`make:csgtdocs`), and ships the shared admin utilities used by every project (users/roles/profile controllers, menu rendering and misc helpers).
+
+## Versions
+
+One branch per major version — every version is in active use by projects pinned to it, so fixes are applied to the branch of the affected version. Install the line that matches your project:
+
+```bash
+composer require csgt/utils:^10.0
+```
 
 | Package Version | Laravel UI | Cancerbero | Crud version | Menu Table | AdminLTE    | Vue | PHP | Webserver |
 | --------------- | ---------- | ---------- | ------------ | ---------- | ----------- | --- | --- | --------- |
@@ -12,7 +22,13 @@ This package is used as utilities for the csgt packages.
 | 9.0             | yes        | names      | 8            | en         | 4.0.0-alpha | 3   | 8.1 | octane    |
 | 10.0            | yes        | names      | 8            | en         | 4.0.0-alpha | 3   | 8.2 | octane    |
 
-To render the menu, use the following snippet. This will auto-generate the required structure needed for the `csgt\menu` package.
+## Menu
+
+To render the menu, use the following snippet. This will auto-generate the required structure needed for the `csgt/menu` package.
+
+```
+{!! \Csgt\Utils\Menu::menu() !!}
+```
 
 ## CI/CD Pipeline
 
@@ -50,3 +66,36 @@ The `deploy` job is project-specific (host, Docker, Octane, etc.). Configure the
 | `PRODUCTION_HEALTHCHECK_URL`  | no       | URL checked after deploy; deploy fails if not HTTP 200  |
 
 CI runs are cancelled when superseded by a newer commit, but deployments are never cancelled mid-flight (concurrent pushes queue) to avoid leaving the server half-migrated.
+
+## Documentation
+
+Publish the standard project documentation:
+
+```bash
+php artisan make:csgtdocs
+```
+
+This creates three files from company-wide templates:
+
+- `README.md` — stack, local setup, frequent commands, CI/CD summary, plus clearly marked `EDIT`/`TODO` sections for the project's business domain.
+- `AGENTS.md` — guidance for AI coding agents (the cross-tool standard read by Codex, Gemini CLI, Cursor, etc.): stack, CSGT conventions (commits, migrations, cancerbero, CRUD pattern, testing checklist, generated files), environment commands, plus editable project-context sections.
+- `CLAUDE.md` — a two-line pointer that imports `AGENTS.md` for Claude Code, so the guidance lives in a single tool-agnostic file.
+
+Project name, repository (for the CI badge), PHP and Node versions are auto-detected (`composer.json`, git remote, `.nvmrc`). Existing files are never overwritten unless `--force` is passed. After generating, search for the `EDIT`/`TODO` markers and fill in the project-specific sections.
+
+| Option    | Default                         | Description                                  |
+| --------- | ------------------------------- | -------------------------------------------- |
+| `--php`   | auto-detected (`composer.json`) | PHP version shown in the docs                |
+| `--node`  | auto-detected (`.nvmrc`/`package.json`) | Node version shown in the docs       |
+| `--force` | —                               | Overwrite `README.md`/`CLAUDE.md` if present |
+
+## Package development
+
+Work targets the branch of the affected version (master is the current major). The test suite runs the scaffolding commands against a real Laravel skeleton via `orchestra/testbench`:
+
+```bash
+composer install
+composer test
+```
+
+Every push runs the suite on GitHub Actions across this branch's PHP matrix (`.github/workflows/tests.yml`). Releases are tags: a fix on a version branch ships by tagging the next patch on that branch (Composer installs tags, not branches).

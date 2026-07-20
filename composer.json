@@ -18,6 +18,18 @@
             "Csgt\\Utils\\": "src"
         }
     },
+    "require-dev": {
+        "orchestra/testbench": "^8.0|^9.0",
+        "phpunit/phpunit": "^10.5|^11.0"
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Csgt\\Utils\\Tests\\": "tests"
+        }
+    },
+    "scripts": {
+        "test": "phpunit"
+    },
     "minimum-stability": "stable",
     "extra": {
         "laravel": {

@@ -1,0 +1,84 @@
+# {{PROJECT_NAME}}
+
+[![CI/CD Pipeline](https://github.com/{{REPO_SLUG}}/actions/workflows/ci.yml/badge.svg)](https://github.com/{{REPO_SLUG}}/actions/workflows/ci.yml)
+
+<!-- EDIT: one or two paragraphs: what this system does, for which client/area, and its main goal. -->
+_TODO: describe what this system does and for whom._
+
+## Stack
+
+| Layer     | Technology                                             |
+| --------- | ------------------------------------------------------ |
+| Backend   | PHP {{PHP_VERSION}}, Laravel + Octane (Swoole)         |
+| Frontend  | Vue 3 + AdminLTE, built with Vite (Node {{NODE_VERSION}}) |
+| Database  | MySQL 8 (Docker service `mysql`)                       |
+| Cache     | Redis (Docker service `redis`)                         |
+| Packages  | csgt/utils, csgt/crud, csgt/cancerbero, csgt/menu      |
+| Infra     | Docker Compose (`app`, `redis`, `mysql`)               |
+
+## Local setup
+
+Requirements: Docker Desktop (or Engine + Compose), git and Node {{NODE_VERSION}} on the host. Everything PHP runs inside the containers.
+
+```bash
+git clone git@github.com:{{REPO_SLUG}}.git
+cd {{PROJECT_NAME}}
+cp .env.example .env && cp docker-compose.yml.example docker-compose.yml
+docker compose up -d --build
+docker compose exec app composer install
+docker compose exec app php artisan key:generate
+docker compose exec app php artisan migrate
+docker compose exec app php artisan db:seed --force
+npm install
+npm run dev
+```
+
+The app is served at `http://localhost` and the Vite dev server at port `5173`. `APP_ENV=production` by default in `.env`, so destructive Artisan commands (`migrate`, `db:seed`) require `--force`; set `APP_ENV=local` for local work.
+
+<!-- EDIT: add any extra setup this project needs (external services, credentials, extra seeders, VPN). -->
+
+## Frequent commands
+
+All PHP commands run inside the `app` container; frontend commands run on the host. The container shell ships aliases: `migrate`, `rollback`, `seed`, `seedgod` (= `db:seed --class=GodSeeder`), `cda` (= `composer dump-autoload`).
+
+| Action              | Command                                              |
+| ------------------- | ---------------------------------------------------- |
+| Artisan             | `docker compose exec app php artisan <command>`      |
+| Tests               | `docker compose exec app php artisan test`           |
+| Single test         | `docker compose exec app php artisan test --filter=TestName` |
+| Code style          | `docker compose exec app vendor/bin/pint`            |
+| Logs                | `docker compose exec app php artisan pail`           |
+| Frontend dev server | `npm run dev` (host)                                 |
+| Production build    | `npm run build` (host)                               |
+| Container shell     | `docker compose exec app bash`                       |
+
+## CI/CD
+
+The pipeline lives at `.github/workflows/ci.yml` (generated with `php artisan make:csgtci`). Every push and pull request runs code style, tests and the frontend build; pushes to the default branch additionally deploy to production when CI passes. The required repository secrets (`PRODUCTION_HOST`, `PRODUCTION_USER`, `PRODUCTION_PATH`, `PRODUCTION_SSH_KEY`, optional `PRODUCTION_SSH_PORT`, `PRODUCTION_SSH_KNOWN_HOSTS`, `PRODUCTION_HEALTHCHECK_URL`) are documented in the workflow itself.
+
+## Business domain
+
+<!-- EDIT: this whole section is project-specific. Replace the TODOs. -->
+
+### Modules
+
+_TODO: list the main modules/catalogs and what each one manages._
+
+### External integrations
+
+_TODO: list external APIs, web services and scheduled jobs, with links to their docs._
+
+### Project-specific decisions
+
+_TODO: document anything that deviates from the standard CSGT stack and why._
+
+## Troubleshooting
+
+| Symptom | Fix |
+| ------- | ---- |
+| Assets load from `localhost:5173` in production build | `rm public/hot` and rebuild (`npm run build`) |
+| Code changes not reflected | `docker compose restart app` (Octane keeps code in memory) |
+| Permission errors on `storage/` | `docker compose exec app chmod -R ugo+rw storage bootstrap/cache` |
+| `migrate`/`db:seed` refuse to run | `APP_ENV=production` requires `--force`, or set `APP_ENV=local` |
+
+<!-- EDIT: add the problems that actually bite in this project. -->
