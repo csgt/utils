@@ -11,7 +11,6 @@ class UtilsServiceProvider extends ServiceProvider
 
     public function boot(Router $router)
     {
-        AliasLoader::getInstance()->alias('CSGTMenu', 'Csgt\Utils\CSGTMenu');
         AliasLoader::getInstance()->alias('Utils', 'Csgt\Utils\Utils');
 
         $this->loadViewsFrom(__DIR__ . '/resources/views/', 'csgtutils');
@@ -29,6 +28,14 @@ class UtilsServiceProvider extends ServiceProvider
 
         $this->commands([
             Console\MakeDockerCommand::class,
+        ]);
+
+        $this->commands([
+            Console\MakeCiCommand::class,
+        ]);
+
+        $this->commands([
+            Console\MakeDocsCommand::class,
         ]);
 
         $this->app->singleton('utils', function ($app) {
