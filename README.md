@@ -67,6 +67,8 @@ The `deploy` job is project-specific (host, Docker, Octane, etc.). Configure the
 
 CI runs are cancelled when superseded by a newer commit, but deployments are never cancelled mid-flight (concurrent pushes queue) to avoid leaving the server half-migrated.
 
+After migrating, the deploy runs `db:seed --force` and then `db:seed --class=GodSeeder --force` (the latter only when `database/seeders/GodSeeder.php` exists). The ACL — modules, permissions and menu — is generated from the seeders, so without this step new permissions never reach production even though the migrations do. This is safe to repeat because CSGT seeders rebuild derived data (clear then insert, or `updateOrInsert`). **If a project adds a seeder with business data, guard it or keep it out of `DatabaseSeeder`**, otherwise it re-runs on every deploy.
+
 ## Docker environment
 
 Publish the local Docker environment (Ubuntu 24.04 + Octane/Swoole on port 81, MySQL and Redis):
