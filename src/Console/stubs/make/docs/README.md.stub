@@ -1,0 +1,82 @@
+# {{PROJECT_NAME}}
+
+[![CI/CD Pipeline](https://github.com/{{REPO_SLUG}}/actions/workflows/ci.yml/badge.svg)](https://github.com/{{REPO_SLUG}}/actions/workflows/ci.yml)
+
+<!-- EDIT: one or two paragraphs: what this system does, for which client/area, and its main goal. -->
+_TODO: describe what this system does and for whom._
+
+## Stack
+
+| Layer     | Technology                                            |
+| --------- | ----------------------------------------------------- |
+| Backend   | PHP {{PHP_VERSION}}, Laravel (nginx + php-fpm)        |
+| Frontend  | Vue 2 + AdminLTE, Laravel Mix (Node {{NODE_VERSION}}) |
+| Database  | MySQL (Docker service `mysql`)                        |
+| Cache     | Redis (Docker service `redis`)                        |
+| Packages  | csgt/utils, csgt/crud, csgt/cancerbero, csgt/menu     |
+| Infra     | Docker Compose (`nginx`, `php`, `scheduler`, `horizon`, `mysql`, `redis`) |
+
+## Local setup
+
+Requirements: Docker Desktop (or Engine + Compose), git, and PHP + Composer + Node {{NODE_VERSION}} on the host — the `php` container image does not bundle Composer or Node, so dependency installs and asset builds run on the host.
+
+```bash
+git clone git@github.com:{{REPO_SLUG}}.git
+cd {{PROJECT_NAME}}
+cp .env.example .env && cp docker-compose.yml.example docker-compose.yml
+composer install
+docker compose up -d --build
+docker compose exec php php artisan key:generate
+docker compose exec php php artisan migrate
+docker compose exec php php artisan db:seed
+npm install
+npm run watch
+```
+
+The app is served at `http://localhost`. If `APP_ENV=production` in `.env`, destructive Artisan commands (`migrate`, `db:seed`) require `--force`; set `APP_ENV=local` for local work.
+
+<!-- EDIT: add any extra setup this project needs (external services, credentials, extra seeders, VPN). -->
+
+## Frequent commands
+
+Artisan commands run inside the `php` container; composer/npm run on the host. The container shell ships aliases: `migrate`, `rollback`, `seed`, `seedgod` (= `db:seed --class=GodSeeder`), `cda` (= `composer dump-autoload`).
+
+| Action              | Command                                          |
+| ------------------- | ------------------------------------------------ |
+| Artisan             | `docker compose exec php php artisan <command>`  |
+| Tests               | `docker compose exec php vendor/bin/phpunit`     |
+| Single test         | `docker compose exec php vendor/bin/phpunit --filter=TestName` |
+| Frontend dev build  | `npm run watch` (host)                           |
+| Production build    | `npm run production` (host)                      |
+| Container shell     | `docker compose exec php bash`                   |
+
+## CI/CD
+
+The pipeline lives at `.github/workflows/ci.yml` (generated with `php artisan make:csgtci`). Every push and pull request runs code style, tests and the frontend build; pushes to the default branch additionally deploy to production when CI passes. The required repository secrets (`PRODUCTION_HOST`, `PRODUCTION_USER`, `PRODUCTION_PATH`, `PRODUCTION_SSH_KEY`, optional `PRODUCTION_SSH_PORT`, `PRODUCTION_SSH_KNOWN_HOSTS`, `PRODUCTION_HEALTHCHECK_URL`) are documented in the workflow itself.
+
+## Business domain
+
+<!-- EDIT: this whole section is project-specific. Replace the TODOs. -->
+
+### Modules
+
+_TODO: list the main modules/catalogs and what each one manages._
+
+### External integrations
+
+_TODO: list external APIs, web services and scheduled jobs, with links to their docs._
+
+### Project-specific decisions
+
+_TODO: document anything that deviates from the standard CSGT stack and why._
+
+## Troubleshooting
+
+| Symptom | Fix |
+| ------- | ---- |
+| Assets load from the dev server in a production build | `rm public/hot` and rebuild (`npm run production`) |
+| Code changes not reflected | `docker compose restart php` (php-fpm opcache) |
+| Permission errors on `storage/` | `docker compose exec php chmod -R ugo+rw storage bootstrap/cache` |
+| `migrate`/`db:seed` refuse to run | `APP_ENV=production` requires `--force`, or set `APP_ENV=local` |
+
+<!-- EDIT: add the problems that actually bite in this project. -->
