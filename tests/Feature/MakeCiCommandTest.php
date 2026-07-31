@@ -40,6 +40,23 @@ class MakeCiCommandTest extends TestCase
         $this->assertStringContainsString('branches: ["master"]', $contents);
     }
 
+    public function test_the_deploy_seeds_after_migrating()
+    {
+        $this->assertSame(0, Artisan::call('make:csgtci', ['--php' => '7.3', '--node' => '14', '--branch' => 'master']));
+
+        $contents = file_get_contents(base_path('.github/workflows/ci.yml'));
+
+        $this->assertStringContainsString('artisan db:seed --force', $contents);
+        $this->assertStringContainsString('artisan db:seed --class=GodSeeder --force', $contents);
+        $this->assertStringContainsString('database/seeds/GodSeeder.php', $contents);
+
+        $this->assertLessThan(
+            strpos($contents, 'artisan db:seed --force'),
+            strpos($contents, 'artisan migrate --force'),
+            'Seeders must run after migrations.'
+        );
+    }
+
     public function test_it_refuses_to_overwrite_without_force()
     {
         $this->assertSame(0, Artisan::call('make:csgtci', ['--php' => '7.3', '--node' => '14', '--branch' => 'master']));

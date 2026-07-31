@@ -395,6 +395,24 @@ jobs:
           log "Running database migrations"
           php_exec php artisan migrate --force
 
+          # The ACL (modules, permissions, menu) and the catalog tables are
+          # generated from the seeders, so without this step new permissions
+          # never reach production. CSGT seeders rebuild derived data (clear then
+          # insert, or updateOrInsert), which makes re-running them on every
+          # deploy idempotent. If this project adds a seeder with business data,
+          # guard it or keep it out of DatabaseSeeder, or it will re-run here.
+          log "Seeding the ACL and catalogs"
+          php_exec php artisan db:seed --force
+
+          # GodSeeder grants every permission to the Backdoor role; optional
+          # because not every project ships it. Laravel 8 renamed database/seeds
+          # to database/seeders, so both layouts are checked.
+          if [ -f database/seeders/GodSeeder.php ] || [ -f database/seeds/GodSeeder.php ]; then
+            php_exec php artisan db:seed --class=GodSeeder --force
+          else
+            log "No GodSeeder found, skipping"
+          fi
+
           # Frontend build runs with the host's npm: the php-fpm image has no
           # Node. Skips cleanly for backend-only projects; adjust if this
           # project builds assets somewhere else.
