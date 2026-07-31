@@ -1,0 +1,35 @@
+name: "Tests"
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: "PHP ${{ matrix.php }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ["7.2", "7.3"]
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@v6
+
+      - name: "Setup PHP"
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "${{ matrix.php }}"
+          extensions: mbstring, dom, fileinfo, intl, soap
+          coverage: none
+          tools: composer:v2
+
+      - name: "Install dependencies"
+        run: composer update --prefer-dist --no-interaction --no-progress --no-security-blocking
+
+      - name: "Run tests"
+        run: vendor/bin/phpunit
