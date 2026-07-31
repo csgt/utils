@@ -9,8 +9,6 @@ class MakeUtilsCommand extends Command
 
     protected $description = 'CSGT Utils';
 
-    protected $views = [];
-
     protected $models = [
         'Menu' => 'Menu',
     ];
@@ -19,7 +17,6 @@ class MakeUtilsCommand extends Command
     {
         $this->createDirectories();
         $this->exportModels();
-        $this->exportLangs();
 
         $this->info('CSGT Views and controllers generated correctly.');
     }

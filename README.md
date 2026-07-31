@@ -2,7 +2,7 @@
 
 [![Tests](https://github.com/csgt/utils/actions/workflows/tests.yml/badge.svg)](https://github.com/csgt/utils/actions/workflows/tests.yml)
 
-Internal Softlogic package that scaffolds and standardizes CSGT Laravel projects. It publishes the CI/CD pipeline (`make:csgtci`), the Docker environment (`make:csgtdocker`) and the standard documentation (`make:csgtdocs`), and ships the shared admin utilities used by every project (users/roles/profile controllers, menu rendering and misc helpers).
+Internal Softlogic package that scaffolds and standardizes CSGT Laravel projects. It publishes the CI/CD pipeline (`make:csgtci`), the Docker environment (`make:csgtdocker`), the standard documentation (`make:csgtdocs`) and the base app scaffolding (`make:csgtutils`), and ships the shared admin utilities used by every project (users/roles/profile controllers, menu rendering and misc helpers).
 
 ## Versions
 
@@ -67,6 +67,25 @@ The `deploy` job is project-specific (host, Docker, Octane, etc.). Configure the
 
 CI runs are cancelled when superseded by a newer commit, but deployments are never cancelled mid-flight (concurrent pushes queue) to avoid leaving the server half-migrated.
 
+After migrating, the deploy runs `db:seed --force` and then `db:seed --class=GodSeeder --force` (the latter only when `database/seeders/GodSeeder.php` exists). The ACL — modules, permissions and menu — is generated from the seeders, so without this step new permissions never reach production even though the migrations do. This is safe to repeat because CSGT seeders rebuild derived data (clear then insert, or `updateOrInsert`). **If a project adds a seeder with business data, guard it or keep it out of `DatabaseSeeder`**, otherwise it re-runs on every deploy.
+
+## Docker environment
+
+Publish the local Docker environment (Ubuntu 24.04 + Octane/Swoole on port 81, MySQL and Redis):
+
+```bash
+php artisan make:csgtdocker
+```
+
+This creates the following files, with no options to configure:
+
+- `docker-compose.yml` and `docker-compose.yml.example` — `app`, `mysql` and `redis` services. `app` publishes `127.0.0.1:80` (Octane) and `127.0.0.1:5173` (Vite), mounts the project at `/var/www`, and waits for MySQL to start and Redis to pass its healthcheck. MySQL data persists in the `mysql-data` volume.
+- `dockerfiles/app/Dockerfile` — the app image (PHP with Swoole, Node, Composer). Build args: `NODE_VERSION` (defaults to 24) and `SUPERVISOR_OCTANE_EXTRA` (set to `--watch` in the compose file so Octane reloads on file changes).
+- `dockerfiles/app/php.ini`, `supervisord.conf`, `start-container`, `scheduler.sh` — container runtime config. Supervisor runs Octane; the `horizon` and `scheduler` programs ship commented out, enable them per project.
+- `dockerfiles/mysql/Dockerfile` — the MySQL image.
+
+The command aborts if a `dockerfiles/` directory already exists (there is no `--force`); remove it first to regenerate. Unlike the CI/CD workflow, these files are usually tuned per project after publishing.
+
 ## Documentation
 
 Publish the standard project documentation:
@@ -88,6 +107,16 @@ Project name, repository (for the CI badge), PHP and Node versions are auto-dete
 | `--php`   | auto-detected (`composer.json`) | PHP version shown in the docs                |
 | `--node`  | auto-detected (`.nvmrc`/`package.json`) | Node version shown in the docs       |
 | `--force` | —                               | Overwrite `README.md`/`CLAUDE.md` if present |
+
+## Base scaffolding
+
+Publish the base app structure expected by the package's admin utilities:
+
+```bash
+php artisan make:csgtutils
+```
+
+This creates the `app/Http/Controllers/Catalogs` and `app/Models/Menu` directories, and writes `app/Models/Menu/Menu.php` (an empty Eloquent model, namespaced to the app) that backs the [Menu](#menu) rendering below. Existing files are overwritten, so run it once when setting up a project rather than on an established codebase.
 
 ## Package development
 
