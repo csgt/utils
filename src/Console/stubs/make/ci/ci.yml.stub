@@ -370,6 +370,23 @@ jobs:
           docker_compose_app_run php artisan optimize:clear
           docker_compose_app_run_with_deps php artisan migrate --force
 
+          # The ACL (modules, permissions, menu) and the catalog tables are
+          # generated from the seeders, so without this step new permissions
+          # never reach production. CSGT seeders rebuild derived data (clear then
+          # insert, or updateOrInsert), which makes re-running them on every
+          # deploy idempotent. If this project adds a seeder with business data,
+          # guard it or keep it out of DatabaseSeeder, or it will re-run here.
+          log "Seeding the ACL and catalogs"
+          docker_compose_app_run_with_deps php artisan db:seed --force
+
+          # GodSeeder grants every permission to the Backdoor role; optional
+          # because not every project ships it.
+          if [ -f database/seeders/GodSeeder.php ]; then
+            docker_compose_app_run_with_deps php artisan db:seed --class=GodSeeder --force
+          else
+            log "No GodSeeder found, skipping"
+          fi
+
           # Build the frontend only when the project has one, mirroring the CI
           # guard so backend-only projects deploy without failing on npm. Mix
           # ("production"/"prod") and Vite ("build") projects are both handled.
