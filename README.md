@@ -55,6 +55,8 @@ The `deploy` job targets the nginx/php-fpm Docker stack published by `make:csgtd
 
 CI runs are cancelled when superseded by a newer commit, but deployments are never cancelled mid-flight (concurrent pushes queue) to avoid leaving the server half-migrated.
 
+After migrating, the deploy runs `db:seed --force` and then `db:seed --class=GodSeeder --force` (the latter only when `database/seeders/GodSeeder.php` or `database/seeds/GodSeeder.php` exists). The ACL — modules, permissions and menu — is generated from the seeders, so without this step new permissions never reach production even though the migrations do. This is safe to repeat because CSGT seeders rebuild derived data (clear then insert, or `updateOrInsert`). **If a project adds a seeder with business data, guard it or keep it out of `DatabaseSeeder`**, otherwise it re-runs on every deploy.
+
 ## Documentation
 
 Publish the standard project documentation:
