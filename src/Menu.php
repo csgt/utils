@@ -1,4 +1,5 @@
 <?php
+
 namespace Csgt\Utils;
 
 use Request;
@@ -7,7 +8,7 @@ use App\Models\Menu\Menu as MMenu;
 
 class Menu
 {
-    protected static $parents    = [];
+    protected static $parents = [];
     protected static $menuRoutes = [];
 
     public static function getParents($aRoute)
@@ -50,9 +51,9 @@ class Menu
             ->get()
             ->map(function ($menu) {
                 return [
-                    'name'         => $menu->name,
-                    'route'        => $menu->route,
-                    'icon'         => $menu->icon,
+                    'name' => $menu->name,
+                    'route' => $menu->route,
+                    'icon' => $menu->icon,
                     'parent_route' => $menu->parent_route,
                     'has_children' => $menu->has_children,
                 ];
@@ -75,7 +76,7 @@ class Menu
             $route = substr($route, 0, strrpos($route, '.')) . '.index';
             session()->put('menu-selected', $route);
 
-            $mc   = new MenuC;
+            $mc = new MenuC();
             $menu = $mc->getMenu($collection);
         }
 
@@ -117,10 +118,10 @@ class Menu
     {
         return $nodes->where('parent_route', $parent)->map(function ($m, $key) use ($nodes) {
             return [
-                'id'       => $key,
-                'label'    => $m['name'],
-                'icon'     => $m['icon'],
-                'url'      => $m['has_children'] ? null : route($m['route']),
+                'id' => $key,
+                'label' => $m['name'],
+                'icon' => $m['icon'],
+                'url' => $m['has_children'] ? null : route($m['route']),
                 'children' => self::children($nodes, $m['route'])->values(),
             ];
         });

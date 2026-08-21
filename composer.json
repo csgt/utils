@@ -25,5 +25,8 @@
                 "Csgt\\Utils\\UtilsServiceProvider"
             ]
         }
+    },
+    "require-dev": {
+        "laravel/pint": "^1.0"
     }
 }
