@@ -1,0 +1,8 @@
+{
+    "laravel-pint.enable": true,
+    "laravel-pint.preset": "psr12",
+    "[php]": {
+        "editor.defaultFormatter": "open-southeners.laravel-pint",
+        "editor.formatOnSave": true
+    }
+}
