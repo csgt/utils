@@ -1,4 +1,5 @@
 <?php
+
 namespace Csgt\Utils\Http\Controllers;
 
 use DB;
@@ -15,7 +16,7 @@ class UsersController extends CrudController
 {
     public function __construct()
     {
-        $this->setModel(new User);
+        $this->setModel(new User());
         $this->setTitle('Usuarios');
         $this->setBreadCrumb([
             ['url' => '', 'title' => 'Catálogos', 'icon' => 'fa fa-book'],
@@ -42,15 +43,15 @@ class UsersController extends CrudController
     public function detail(Request $request, $id)
     {
         $roleIds = [];
-        $user    = [
-            'name'     => null,
-            'email'    => null,
-            'active'   => true,
+        $user = [
+            'name' => null,
+            'email' => null,
+            'active' => true,
             'role_ids' => [],
         ];
 
         if ($id !== '0') {
-            $id   = Crypt::decrypt($id);
+            $id = Crypt::decrypt($id);
             $user = User::with('roles')->findOrFail($id);
 
             $roleIds = $user->roles->map(function ($role) {
@@ -67,8 +68,8 @@ class UsersController extends CrudController
         $roles = $roles->get();
 
         return response()->json([
-            'user'           => $user,
-            'roles'          => $roles,
+            'user' => $user,
+            'roles' => $roles,
             'changePassword' => false,
         ]);
     }
@@ -103,22 +104,22 @@ class UsersController extends CrudController
     public function update(Request $request, $id)
     {
         $savePass = ($id === 0 || $request->changePassword);
-        $rules    = [
-            'user.name'     => 'required',
-            'user.email'    => 'required|email',
+        $rules = [
+            'user.name' => 'required',
+            'user.email' => 'required|email',
             'user.role_ids' => 'required|min:1',
         ];
 
         $messages = [
-            'user.name.required'     => 'El nombre es requerido',
-            'user.email.required'    => 'El email es requerido',
+            'user.name.required' => 'El nombre es requerido',
+            'user.email.required' => 'El email es requerido',
             'user.role_ids.required' => 'Al menos debe seleccionar un rol',
-            'user.role_ids.min'      => 'Al menos debe seleccionar un rol',
+            'user.role_ids.min' => 'Al menos debe seleccionar un rol',
         ];
 
         if ($savePass) {
-            $rules['user.password']              = 'required|confirmed';
-            $messages['user.password.required']  = 'La password es requerida';
+            $rules['user.password'] = 'required|confirmed';
+            $messages['user.password.required'] = 'La password es requerida';
             $messages['user.password.confirmed'] = 'Las passwords no concuerdan';
         }
 
@@ -128,14 +129,14 @@ class UsersController extends CrudController
 
             if ($id !== 0) {
                 $userId = Crypt::decrypt($id);
-                $user   = User::findOrFail($userId);
+                $user = User::findOrFail($userId);
 
             } else {
-                $user = new User;
+                $user = new User();
             }
 
-            $user->name   = $request->user['name'];
-            $user->email  = $request->user['email'];
+            $user->name = $request->user['name'];
+            $user->email = $request->user['email'];
             $user->active = $request->user['active'];
             if ($savePass) {
                 $user->password = Hash::make($request->user['password']);
@@ -145,7 +146,7 @@ class UsersController extends CrudController
             UserRole::where('user_id', $user->id)->delete();
 
             foreach ($request->user['role_ids'] as $roleId) {
-                $ur          = new UserRole;
+                $ur = new UserRole();
                 $ur->role_id = $roleId;
                 $ur->user_id = $user->id;
                 $ur->save();

@@ -1,4 +1,5 @@
 <?php
+
 namespace Csgt\Utils;
 
 use DB;
@@ -48,9 +49,14 @@ class Menu
         }
 
         //Ahora que ya tenemos todos los menuids que necesitamos, hacemos de nuevo el select IN
-        $arr         = [];
-        $permissions = MMenu::select('menus.name', DB::raw("CONCAT(mo.name,'.',p.name) AS route"),
-            'menus.parent_id', 'menus.id', 'menus.icon')
+        $arr = [];
+        $permissions = MMenu::select(
+            'menus.name',
+            DB::raw("CONCAT(mo.name,'.',p.name) AS route"),
+            'menus.parent_id',
+            'menus.id',
+            'menus.icon'
+        )
             ->leftJoin('role_module_permissions AS rmp', 'rmp.module_permission_id', '=', 'menus.module_permission_id')
             ->leftJoin('module_permissions AS mp', 'mp.id', '=', 'rmp.module_permission_id')
             ->leftJoin('modules AS mo', 'mo.id', '=', 'mp.module_id')
@@ -61,11 +67,11 @@ class Menu
             ->get()
             ->map(function ($menu) {
                 return [
-                    'name'      => $menu->name,
-                    'route'     => $menu->route,
-                    'icon'      => $menu->icon,
+                    'name' => $menu->name,
+                    'route' => $menu->route,
+                    'icon' => $menu->icon,
                     'parent_id' => (int) $menu->parent_id,
-                    'id'        => $menu->id,
+                    'id' => $menu->id,
                 ];
             });
 

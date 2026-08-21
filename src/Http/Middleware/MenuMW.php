@@ -1,4 +1,5 @@
 <?php
+
 namespace Csgt\Utils\Http\Middleware;
 
 use Closure;
@@ -11,13 +12,13 @@ class MenuMW
     {
         if (auth()->check()) {
             if (!session()->has('menu-collection')) {
-                $elAuthMenu = new Menu;
+                $elAuthMenu = new Menu();
                 $elAuthMenu->menuForRole();
             }
-            $menu           = new MenuC;
+            $menu = new MenuC();
             $menuCollection = session()->get('menu-collection');
-            $route          = $request->route()->getName();
-            $route          = substr($route, 0, strrpos($route, '.')) . '.index';
+            $route = $request->route()->getName();
+            $route = substr($route, 0, strrpos($route, '.')) . '.index';
 
             session()->put('menu-selected', $route);
             session()->put('menu', $menu->getMenu($menuCollection));

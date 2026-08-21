@@ -1,4 +1,5 @@
 <?php
+
 namespace Csgt\Utils\Console;
 
 use Illuminate\Console\Command;
@@ -22,8 +23,8 @@ class MakeDocsCommand extends Command
     {
         $replacements = [
             '{{PROJECT_NAME}}' => $this->resolveProjectName(),
-            '{{REPO_SLUG}}'    => $this->resolveRepoSlug(),
-            '{{PHP_VERSION}}'  => $this->option('php') ?: $this->resolvePhpVersion(),
+            '{{REPO_SLUG}}' => $this->resolveRepoSlug(),
+            '{{PHP_VERSION}}' => $this->option('php') ?: $this->resolvePhpVersion(),
             '{{NODE_VERSION}}' => $this->option('node') ?: $this->resolveNodeVersion(),
         ];
 

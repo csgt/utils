@@ -1,4 +1,5 @@
 <?php
+
 namespace Csgt\Utils;
 
 use Exception;
@@ -11,7 +12,6 @@ use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 
 class Handler extends ExceptionHandler
 {
-
     public function report(Exception $e)
     {
         return parent::report($e);
@@ -24,22 +24,22 @@ class Handler extends ExceptionHandler
         switch (true) {
             case $e instanceof AuthenticationException:
                 $message = ($message ? $message : __('Unauthorized'));
-                $retval  = $this->errorResponse($request, $message, 401);
+                $retval = $this->errorResponse($request, $message, 401);
                 break;
             case $e instanceof MethodNotAllowedHttpException:
                 $message = ($message ? $message : __('Method Not Allowed'));
-                $retval  = $this->errorResponse($request, $message, 405);
+                $retval = $this->errorResponse($request, $message, 405);
                 break;
             case $e instanceof ModelNotFoundException:
                 $message = ($message ? $message : __('Model Not Found'));
-                $retval  = $this->errorResponse($request, $message, 404);
+                $retval = $this->errorResponse($request, $message, 404);
                 break;
             case $e instanceof NotFoundHttpException:
                 if (!$request->expectsJson()) {
                     return parent::render($request, $e);
                 }
                 $message = ($message ? $message : __('Resource Not Found'));
-                $retval  = $this->errorResponse($request, $message, 404);
+                $retval = $this->errorResponse($request, $message, 404);
                 break;
             case $e instanceof ValidationException:
                 if ($request->expectsJson()) {
@@ -50,7 +50,7 @@ class Handler extends ExceptionHandler
                         }
                     }
                     $message = ($message ? $message : __('Validation Failed'));
-                    $retval  = $this->errorResponse($request, $message, 422);
+                    $retval = $this->errorResponse($request, $message, 422);
                 } else {
                     return parent::render($request, $e);
                 }
@@ -60,7 +60,7 @@ class Handler extends ExceptionHandler
                     return parent::render($request, $e);
                 }
                 $message = ($message ? $message : __('Invalid Operation'));
-                $retval  = $this->errorResponse($request, $message, 400);
+                $retval = $this->errorResponse($request, $message, 400);
         }
 
         return $retval;
