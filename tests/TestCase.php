@@ -1,4 +1,5 @@
 <?php
+
 namespace Csgt\Utils\Tests;
 
 use Csgt\Utils\UtilsServiceProvider;

@@ -1,11 +1,12 @@
 <?php
+
 namespace Csgt\Utils\Console;
 
 use Illuminate\Console\Command;
 
 class MakeDockerCommand extends Command
 {
-    protected $signature   = 'make:csgtdocker';
+    protected $signature = 'make:csgtdocker';
     protected $description = 'Create docker configurations';
     protected $directories = [
         'dockerfiles',
@@ -13,14 +14,14 @@ class MakeDockerCommand extends Command
         'dockerfiles/mysql',
     ];
     protected $files = [
-        'docker/docker-compose.yml.example.stub'       => 'docker-compose.yml.example',
-        'docker/docker-compose.yml.stub'               => 'docker-compose.yml',
-        'docker/dockerfiles/app/Dockerfile.stub'       => 'dockerfiles/app/Dockerfile',
-        'docker/dockerfiles/app/php.ini.stub'          => 'dockerfiles/app/php.ini',
-        'docker/dockerfiles/app/scheduler.sh.stub'     => 'dockerfiles/app/scheduler.sh',
-        'docker/dockerfiles/app/start-container.stub'  => 'dockerfiles/app/start-container',
+        'docker/docker-compose.yml.example.stub' => 'docker-compose.yml.example',
+        'docker/docker-compose.yml.stub' => 'docker-compose.yml',
+        'docker/dockerfiles/app/Dockerfile.stub' => 'dockerfiles/app/Dockerfile',
+        'docker/dockerfiles/app/php.ini.stub' => 'dockerfiles/app/php.ini',
+        'docker/dockerfiles/app/scheduler.sh.stub' => 'dockerfiles/app/scheduler.sh',
+        'docker/dockerfiles/app/start-container.stub' => 'dockerfiles/app/start-container',
         'docker/dockerfiles/app/supervisord.conf.stub' => 'dockerfiles/app/supervisord.conf',
-        'docker/dockerfiles/mysql/Dockerfile.stub'     => 'dockerfiles/mysql/Dockerfile',
+        'docker/dockerfiles/mysql/Dockerfile.stub' => 'dockerfiles/mysql/Dockerfile',
     ];
 
     public function handle()
