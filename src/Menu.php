@@ -106,7 +106,7 @@ class Menu
             $route = substr($route, 0, strrpos($route, '.')) . '.index';
             session()->put('menu-selected', $route);
 
-            $mc = new MenuC;
+            $mc = new MenuC();
             $menu = $mc->getMenu($collection);
         }
 

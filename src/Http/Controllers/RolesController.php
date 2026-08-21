@@ -1,4 +1,5 @@
 <?php
+
 namespace Csgt\Utils\Http\Controllers;
 
 use DB;
@@ -19,7 +20,7 @@ class RolesController extends CrudController
 
     public function __construct()
     {
-        $this->setModel(new Role);
+        $this->setModel(new Role());
         $this->setTitle('Roles');
         $this->setField(['name' => 'Nombre', 'field' => 'name']);
         $this->setField(['name' => 'Descripción', 'field' => 'description']);
@@ -36,10 +37,10 @@ class RolesController extends CrudController
     public function detail(Request $request, $id)
     {
         $rmpids = [];
-        $role   = ['name' => null, 'description' => null, 'role_module_permissions' => []];
+        $role = ['name' => null, 'description' => null, 'role_module_permissions' => []];
 
         if ($id !== '0') {
-            $id   = Crypt::decrypt($id);
+            $id = Crypt::decrypt($id);
             $role = Role::with('role_module_permissions:id,role_id,module_permission')
                 ->findOrFail($id);
 
@@ -49,7 +50,7 @@ class RolesController extends CrudController
         }
 
         $permissions = Permission::orderBy('name')->get();
-        $modules     = Module::orderBy('name')->get();
+        $modules = Module::orderBy('name')->get();
 
         $modulepermissions = ModulePermission::query()
             ->orderBy('name')
@@ -71,7 +72,7 @@ class RolesController extends CrudController
             ->groupBy('m.description');
 
         return response()->json([
-            'role'              => $role,
+            'role' => $role,
             'modulepermissions' => $modulepermissions,
         ]);
     }
@@ -90,7 +91,7 @@ class RolesController extends CrudController
         </ol>';
 
         $params = [
-            'id'   => $id,
+            'id' => $id,
             'path' => $this->path,
         ];
 
@@ -110,12 +111,12 @@ class RolesController extends CrudController
     public function update(Request $request, $id)
     {
         $rules = [
-            'role.name'        => 'required',
+            'role.name' => 'required',
             'role.description' => 'required',
         ];
 
         $messages = [
-            'role.name.required'        => 'El nombre es requerido',
+            'role.name.required' => 'El nombre es requerido',
             'role.description.required' => 'La descripción es requerida',
         ];
 
@@ -125,13 +126,13 @@ class RolesController extends CrudController
 
             if ($id !== 0) {
                 $roleid = Crypt::decrypt($id);
-                $role   = Role::findOrFail($roleid);
+                $role = Role::findOrFail($roleid);
 
             } else {
-                $role = new Role;
+                $role = new Role();
             }
 
-            $role->name        = $request->role['name'];
+            $role->name = $request->role['name'];
             $role->description = $request->role['description'];
             $role->save();
 
@@ -140,8 +141,8 @@ class RolesController extends CrudController
             foreach ($request->modulepermissions as $modules) {
                 foreach ($modules as $mp) {
                     if ($mp['enabled']) {
-                        $rmp                    = new RoleModulePermission;
-                        $rmp->role_id           = $role->id;
+                        $rmp = new RoleModulePermission();
+                        $rmp->role_id = $role->id;
                         $rmp->module_permission = $mp['name'];
                         $rmp->save();
                     }

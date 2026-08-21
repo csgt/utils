@@ -1,4 +1,5 @@
 <?php
+
 namespace Csgt\Utils\Tests\Feature;
 
 use Csgt\Utils\Tests\TestCase;

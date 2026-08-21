@@ -17,9 +17,14 @@
                     <div class="col-sm-12">
                         <div class="form-group">
                             <label for="nombre">Nombre</label>
-                            <input name="nombre" type="text" :class="{'form-control' : true, 'is-invalid' : validationErrors['user.name']}" v-model="data.user.name">
+                            <input
+                                name="nombre"
+                                type="text"
+                                :class="{ 'form-control': true, 'is-invalid': validationErrors['user.name'] }"
+                                v-model="data.user.name"
+                            />
                             <div v-if="validationErrors['user.name']" class="invalid-feedback">
-                                {{validationErrors['user.name'][0]}}
+                                {{ validationErrors["user.name"][0] }}
                             </div>
                         </div>
                     </div>
@@ -28,7 +33,12 @@
                     <div class="col-sm-12">
                         <div class="form-group">
                             <div class="form-check">
-                                <input type="checkbox" class="form-check-input" id="active" v-model="data.changePassword">
+                                <input
+                                    type="checkbox"
+                                    class="form-check-input"
+                                    id="active"
+                                    v-model="data.changePassword"
+                                />
                                 <label class="form-check-label" for="active">Cambiar password</label>
                             </div>
                         </div>
@@ -38,16 +48,28 @@
                     <div class="col-sm-6">
                         <div class="form-group">
                             <label for="password">Password</label>
-                            <input name="password" type="password" autocomplete="off" :class="{'form-control' : true, 'is-invalid' : validationErrors['user.password']}" v-model="data.user.password">
+                            <input
+                                name="password"
+                                type="password"
+                                autocomplete="off"
+                                :class="{ 'form-control': true, 'is-invalid': validationErrors['user.password'] }"
+                                v-model="data.user.password"
+                            />
                             <div v-if="validationErrors['user.password']" class="invalid-feedback">
-                                {{validationErrors['user.password'][0]}}
+                                {{ validationErrors["user.password"][0] }}
                             </div>
                         </div>
                     </div>
                     <div class="col-sm-6">
                         <div class="form-group">
                             <label for="password_confirmation">Repetir Password</label>
-                            <input name="password_confirmation" type="password" autocomplete="off" class="form-control" v-model="data.user.password_confirmation">
+                            <input
+                                name="password_confirmation"
+                                type="password"
+                                autocomplete="off"
+                                class="form-control"
+                                v-model="data.user.password_confirmation"
+                            />
                         </div>
                     </div>
                 </div>

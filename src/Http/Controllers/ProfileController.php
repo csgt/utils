@@ -1,4 +1,5 @@
 <?php
+
 namespace Csgt\Utils\Http\Controllers;
 
 use Auth;
@@ -23,7 +24,7 @@ class ProfileController extends Controller
         $user = User::findOrFail(Auth::id());
 
         return response()->json([
-            'user'           => $user,
+            'user' => $user,
             'changePassword' => false,
         ]);
     }
@@ -31,7 +32,7 @@ class ProfileController extends Controller
     public function store(Request $request)
     {
         $savePass = $request->changePassword;
-        $rules    = [
+        $rules = [
             'user.name' => 'required',
         ];
 
@@ -40,14 +41,14 @@ class ProfileController extends Controller
         ];
 
         if ($savePass) {
-            $rules['user.password']              = 'required|confirmed';
-            $messages['user.password.required']  = 'La password es requerida';
+            $rules['user.password'] = 'required|confirmed';
+            $messages['user.password.required'] = 'La password es requerida';
             $messages['user.password.confirmed'] = 'Las passwords no concuerdan';
         }
 
         $request->validate($rules, $messages);
 
-        $user       = User::findOrFail(Auth::id());
+        $user = User::findOrFail(Auth::id());
         $user->name = $request->user['name'];
         if ($savePass) {
             $user->password = Hash::make($request->user['password']);
