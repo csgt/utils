@@ -1,4 +1,5 @@
 <?php
+
 namespace Csgt\Utils\Console;
 
 use Illuminate\Console\Command;

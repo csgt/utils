@@ -1,4 +1,5 @@
 <?php
+
 namespace Csgt\Utils\Console;
 
 use Illuminate\Console\Command;
@@ -33,7 +34,7 @@ class MakeScaffoldCommand extends Command
     {
         $label = $this->ask('What is the field\'s label? (ex. Ship)');
         $field = $this->ask('What is the field name? (ex. ship.name)');
-        $type  = $this->choice('What type of field do you need?', ['text', 'selectize']);
+        $type = $this->choice('What type of field do you need?', ['text', 'selectize']);
 
         $output = '<div class="form-group">
             <label class="control-label">' . $label . '</label>';
