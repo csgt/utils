@@ -33,6 +33,8 @@ class UsersController extends CrudController
             $ids = UserRole::where('role_id', Cancerbero::godRole())->pluck('user_id');
             if (!empty($ids)) {
                 $this->setWhere('id', '<>', $ids);
+            foreach ($ids as $id) {
+                $this->setWhere('id', '<>', $id);
             }
         }
 
