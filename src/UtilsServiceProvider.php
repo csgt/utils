@@ -1,4 +1,5 @@
 <?php
+
 namespace Csgt\Utils;
 
 use Illuminate\Routing\Router;
@@ -42,7 +43,7 @@ class UtilsServiceProvider extends ServiceProvider
         ]);
 
         $this->app->singleton('utils', function ($app) {
-            return new Utils;
+            return new Utils();
         });
     }
 
