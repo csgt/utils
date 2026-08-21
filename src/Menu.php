@@ -1,4 +1,5 @@
 <?php
+
 namespace Csgt\Utils;
 
 use DB;
@@ -48,8 +49,13 @@ class Menu
         }
 
         //Ahora que ya tenemos todos los menuids que necesitamos, hacemos de nuevo el select IN
-        $permissions = MMenu::select('authmenu.nombre', DB::raw("CONCAT(mo.nombre,'.',p.nombre) AS ruta"),
-            'authmenu.padreid', 'authmenu.menuid', 'authmenu.icono')
+        $permissions = MMenu::select(
+            'authmenu.nombre',
+            DB::raw("CONCAT(mo.nombre,'.',p.nombre) AS ruta"),
+            'authmenu.padreid',
+            'authmenu.menuid',
+            'authmenu.icono'
+        )
             ->leftJoin('authrolmodulopermisos AS rmp', 'rmp.modulopermisoid', '=', 'authmenu.modulopermisoid')
             ->leftJoin('authmodulopermisos AS mp', 'mp.modulopermisoid', '=', 'rmp.modulopermisoid')
             ->leftJoin('authmodulos AS mo', 'mo.moduloid', '=', 'mp.moduloid')
@@ -60,11 +66,11 @@ class Menu
             ->get()
             ->map(function ($menu) {
                 return [
-                    'nombre'  => $menu->nombre,
-                    'ruta'    => $menu->ruta,
-                    'icono'   => $menu->icono,
+                    'nombre' => $menu->nombre,
+                    'ruta' => $menu->ruta,
+                    'icono' => $menu->icono,
                     'padreid' => (int) $menu->padreid,
-                    'menuid'  => $menu->menuid,
+                    'menuid' => $menu->menuid,
                 ];
             });
 
@@ -85,7 +91,7 @@ class Menu
             $route = substr($route, 0, strrpos($route, '.')) . '.index';
             session()->put('menu-selected', $route);
 
-            $mc   = new MenuC;
+            $mc = new MenuC();
             $menu = $mc->generarMenu($collection);
         }
 
