@@ -22,9 +22,19 @@
                         />
                     </div>
                 </div>
-                <label>Permisos</label>
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <label class="mb-0">Permisos</label>
+                    <div class="btn-group btn-group-sm" role="group" aria-label="Seleccionar permisos">
+                        <button type="button" class="btn btn-outline-success" @click="setAllPermissions(true)">
+                            Todos
+                        </button>
+                        <button type="button" class="btn btn-outline-danger" @click="setAllPermissions(false)">
+                            Ninguno
+                        </button>
+                    </div>
+                </div>
                 <div class="row">
-                    <div v-for="m in data.modules" class="col-sm-4">
+                    <div v-for="m in data.modules" :key="m.name" class="col-sm-4">
                         <catalogs-rolemodule :module="m" />
                     </div>
                 </div>
@@ -64,6 +74,13 @@ export default {
             });
     },
     methods: {
+        setAllPermissions(enabled) {
+            this.data.modules.forEach((module) => {
+                module.modulepermissions.forEach((permission) => {
+                    permission.enabled = enabled;
+                });
+            });
+        },
         save() {
             this.saving = true;
             if (this.id != 0) {

@@ -1,5 +1,5 @@
 <template>
-    <div class="card" :class="color">
+    <div class="card mb-1" :class="color">
         <div class="card-header">
             <span>{{ module.description }}</span>
             <div class="card-tools">
