@@ -29,7 +29,11 @@ jobs:
           tools: composer:v2
 
       - name: "Install dependencies"
-        run: composer update --prefer-dist --no-interaction --no-progress --no-security-blocking
+        run: |
+          # pint needs PHP >= 8.0 and this workflow never runs it, so on the
+          # 7.4 leg of the matrix it is the only thing composer cannot resolve.
+          composer remove --dev laravel/pint --no-update
+          composer update --prefer-dist --no-interaction --no-progress --no-security-blocking
 
       - name: "Run tests"
         run: vendor/bin/phpunit
