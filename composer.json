@@ -25,7 +25,8 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "Csgt\\Utils\\Tests\\": "tests"
+            "Csgt\\Utils\\Tests\\": "tests",
+            "App\\": "tests/Fixtures/App/"
         }
     },
     "scripts": {
