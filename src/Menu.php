@@ -13,7 +13,7 @@ class Menu
 
     public static function getParents($aRoute)
     {
-        if (self::$parents[$aRoute]) {
+        if (! empty(self::$parents[$aRoute])) {
             self::$menuRoutes[] = self::$parents[$aRoute];
             self::getParents(self::$parents[$aRoute]);
         }
@@ -21,6 +21,12 @@ class Menu
 
     public static function menuForRole()
     {
+        // These accumulate across calls. Under a long-lived worker (Octane,
+        // RoadRunner, queue workers) the class is not re-created between
+        // requests, so without this reset one user's menu leaks into the next.
+        self::$parents    = [];
+        self::$menuRoutes = [];
+
         $userRoles = auth()->user()->roleIds();
 
         $menus = MMenu::select('parent_route', 'route')->get();
