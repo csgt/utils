@@ -14,7 +14,7 @@ class Menu
 
     public static function getParents($aMenuId)
     {
-        if (self::$parents[$aMenuId] != 0) {
+        if (! empty(self::$parents[$aMenuId])) {
             self::$menuIds[] = self::$parents[$aMenuId];
             self::getParents(self::$parents[$aMenuId]);
         }
@@ -22,6 +22,11 @@ class Menu
 
     public static function menuForRole()
     {
+        // These accumulate across calls. Under a long-lived worker (Octane,
+        // RoadRunner, queue workers) the class is not re-created between
+        // requests, so without this reset one user's menu leaks into the next.
+        self::$parents = [];
+        self::$menuIds = [0];
 
         $userRoles = auth()->user()->roleIds();
 
