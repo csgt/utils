@@ -217,16 +217,40 @@ jobs:
             export GIT_SSH_COMMAND
           }
 
-          ensure_repository_owner() {
-            deploy_uid="$(id -u)"
-            deploy_gid="$(id -g)"
-            expected_owner="$deploy_uid:$deploy_gid"
+          repository_permissions_ok() {
+            local blocked_paths
+            # Objects are immutable; only their directories need write access.
+            blocked_paths=$(find "$PRODUCTION_PATH/.git" -exec sh -c '
+              for path do
+                if [ -d "$path" ]; then
+                  [ -r "$path" ] && [ -w "$path" ] && [ -x "$path" ] || printf "%s\n" "$path"
+                else
+                  case "$path" in
+                    "$1"/objects/*) continue ;;
+                  esac
+                  [ -r "$path" ] && [ -w "$path" ] || printf "%s\n" "$path"
+                fi
+              done
+            ' sh "$PRODUCTION_PATH/.git" {} +) || return 1
+            [ -z "$blocked_paths" ]
+          }
 
-            if [ -w "$PRODUCTION_PATH/.git" ] && { [ ! -e "$PRODUCTION_PATH/.git/FETCH_HEAD" ] || [ -w "$PRODUCTION_PATH/.git/FETCH_HEAD" ]; }; then
+          ensure_repository_owner() {
+            local expected_owner
+            expected_owner="$(id -u):$(id -g)"
+
+            if repository_permissions_ok; then
               return
             fi
 
-            sudo -n chown -R "$expected_owner" "$PRODUCTION_PATH"
+            log "Repairing Git permissions for $(id -un) at $PRODUCTION_PATH/.git"
+            if ! sudo -n chown -R "$expected_owner" "$PRODUCTION_PATH/.git" ||
+              ! sudo -n find "$PRODUCTION_PATH/.git" -type d -exec chmod u+rwx {} + ||
+              ! sudo -n find "$PRODUCTION_PATH/.git" -path "$PRODUCTION_PATH/.git/objects" -prune -o -type f -exec chmod u+rw {} + ||
+              ! repository_permissions_ok; then
+              echo "::error::Cannot repair Git permissions for $(id -un) at $PRODUCTION_PATH/.git. Check ownership, permissions and passwordless sudo."
+              return 1
+            fi
           }
 
           configure_docker_compose() {
