@@ -57,6 +57,26 @@ class MakeCiCommandTest extends TestCase
         );
     }
 
+    public function test_ci_provides_an_isolated_mysql_connection()
+    {
+        $this->artisan('make:csgtci', ['--branch' => 'main'])->assertExitCode(0);
+
+        $contents = file_get_contents(base_path('.github/workflows/ci.yml'));
+        [$ci, $deploy] = explode("\n  deploy:", $contents, 2);
+
+        $this->assertStringContainsString('image: mysql:8.0', $ci);
+        $this->assertStringContainsString('DB_HOST: 127.0.0.1', $ci);
+        $this->assertStringContainsString('DB_PORT: "33060"', $ci);
+        $this->assertStringContainsString('33060:3306', $ci);
+        $this->assertStringContainsString('DB_DATABASE: ci_testing', $ci);
+        $this->assertStringContainsString('MYSQL_DATABASE: ci_testing', $ci);
+        $this->assertStringContainsString('DB_USERNAME: ci', $ci);
+        $this->assertStringContainsString('MYSQL_USER: ci', $ci);
+        $this->assertStringContainsString('pdo_mysql', $ci);
+        $this->assertLessThan(strpos($ci, 'php artisan test'), strpos($ci, 'php artisan config:clear'));
+        $this->assertStringNotContainsString('DB_DATABASE: ci_testing', $deploy);
+    }
+
     public function test_git_permissions_are_checked_and_repaired_without_touching_application_files()
     {
         $this->artisan('make:csgtci', ['--branch' => 'main'])->assertExitCode(0);

@@ -24,6 +24,32 @@ jobs:
     name: "Continuous Integration"
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # PHP runs on the runner, outside the Docker Compose network.
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: "33060"
+      DB_DATABASE: ci_testing
+      DB_USERNAME: ci
+      DB_PASSWORD: ci_password
+      DB_URL: ""
+      DATABASE_URL: ""
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: ci_testing
+          MYSQL_USER: ci
+          MYSQL_PASSWORD: ci_password
+          MYSQL_ROOT_PASSWORD: ci_root_password
+        ports:
+          - 33060:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
     # Superseded CI runs on the same branch/PR are cancelled: only the latest
     # commit matters and we save runner minutes.
     concurrency:
@@ -37,7 +63,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: "${{ env.PHP_VERSION }}"
-          extensions: mbstring, dom, fileinfo, bcmath, intl, gd, zip, pdo_sqlite, sqlite3
+          extensions: mbstring, dom, fileinfo, bcmath, intl, gd, zip, pdo_mysql, pdo_sqlite, sqlite3
           coverage: none
           tools: composer:v2
 
@@ -58,6 +84,7 @@ jobs:
       - name: "Prepare application environment"
         run: |
           [ -f .env ] || { [ -f .env.example ] && cp .env.example .env; }
+          php artisan config:clear
           if [ -f .env ]; then
             php artisan key:generate
           else
@@ -78,7 +105,8 @@ jobs:
 
       # Most legacy projects have no tests yet. When a PHPUnit configuration is
       # present the suite runs and IS enforcing; otherwise the step skips
-      # cleanly. Test DB config (e.g. sqlite :memory:) lives in phpunit.xml.
+      # cleanly. CI uses the isolated MySQL service above. Avoid force="true"
+      # on DB variables in phpunit.xml, which would override the CI connection.
       - name: "Run tests"
         run: |
           if [ -f phpunit.xml ] || [ -f phpunit.xml.dist ]; then
