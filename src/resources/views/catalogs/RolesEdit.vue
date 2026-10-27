@@ -22,20 +22,32 @@
                         />
                     </div>
                 </div>
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <label class="mb-0">Permisos</label>
+                <div class="d-flex align-items-center justify-content-between mt-3 mb-1">
+                    <h5>Permisos</h5>
                     <div class="btn-group btn-group-sm" role="group" aria-label="Seleccionar permisos">
                         <button type="button" class="btn btn-outline-success" @click="setAllPermissions(true)">
-                            Todos
+                            <i class="fa-regular fa-square-check text-success"></i>
                         </button>
                         <button type="button" class="btn btn-outline-danger" @click="setAllPermissions(false)">
-                            Ninguno
+                            <i class="fa-regular fa-square text-danger"></i>
                         </button>
                     </div>
                 </div>
                 <div class="row">
                     <div v-for="m in data.modules" :key="m.name" class="col-sm-4">
                         <catalogs-rolemodule :module="m" />
+                    </div>
+                </div>
+                <div class="row mt-3" v-if="users.length">
+                    <h5>Usuarios con este rol</h5>
+                    <div class="col-6 col-sm-2" v-for="user in users">
+                        <div class="card">
+                            <div class="card-body pt-1 pb-1">
+                                <a :href="userpath + '/' + user.id + '/edit'" target="_blank">
+                                    {{ user.name }}
+                                </a>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -55,11 +67,12 @@ export default {
                 role: { name: "", description: "" },
                 modules: [],
             },
+            users: [],
             loading: true,
             saving: false,
         };
     },
-    props: ["id", "path"],
+    props: ["id", "path", "userpath"],
     mounted() {
         axios
             .get(this.path + "/" + this.id + "/detail")
@@ -67,6 +80,7 @@ export default {
                 this.loading = false;
                 this.data.role = response.data.role;
                 this.data.modules = response.data.modules;
+                this.users = response.data.users;
             })
             .catch((e) => {
                 this.loading = false;

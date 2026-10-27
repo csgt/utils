@@ -2,20 +2,24 @@
 
 namespace Csgt\Utils\Http\Controllers;
 
-use DB;
-use Cache;
-use Cancerbero;
-use App\Models\Role;
 use App\Models\Module;
 use App\Models\Permission;
-use Illuminate\Http\Request;
-use Csgt\Crud\CrudController;
+use App\Models\Role;
 use App\Models\RoleModulePermission;
+use App\Models\User;
+use App\Models\UserRole;
+use Csgt\Cancerbero\Cancerbero;
 use Csgt\Cancerbero\Models\ModulePermission;
+use Csgt\Crud\CrudController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class RolesController extends CrudController
 {
     public $path = '/catalogs/roles';
+
+    public $userPath = '/catalogs/users';
 
     public function setup(Request $request)
     {
@@ -23,7 +27,13 @@ class RolesController extends CrudController
         $this->setTitle('Roles');
         $this->setField(['name' => 'Nombre', 'field' => 'name']);
         $this->setField(['name' => 'Descripción', 'field' => 'description']);
-        if (!Cancerbero::isGod()) {
+        $this->setField([
+            'name' => 'Usuarios',
+            'field' => '(SELECT COUNT(*) FROM user_roles WHERE role_id = roles.id) AS users_count',
+            'isforeign' => false,
+            'class' => 'text-end',
+        ]);
+        if (! Cancerbero::isGod()) {
             $this->setWhere('id', '<>', Cancerbero::godRole());
         }
         $this->setPermissions(Cancerbero::crudPermissions(substr(str_replace('/', '.', $this->path), 1)));
@@ -72,8 +82,15 @@ class RolesController extends CrudController
             return $module;
         });
 
+        $users = User::query()
+            ->select('id', 'name')
+            ->where('active', true)
+            ->whereIn('id', UserRole::where('role_id', $id)->pluck('user_id'))
+            ->get();
+
         return response()->json([
             'role' => $role,
+            'users' => $users,
             'modules' => $modules,
         ]);
     }
@@ -85,15 +102,16 @@ class RolesController extends CrudController
 
     public function edit(Request $request, $id)
     {
-        $breadcrumb = '<ol class="breadcrumb float-sm-right">
+        $breadcrumb = '<ol class="breadcrumb float-sm-end">
             <li class="breadcrumb-item">Catálogos</li>
-            <li class="breadcrumb-item"><a href="' . $this->path . '">Roles</a></li>
+            <li class="breadcrumb-item"><a href="'.$this->path.'">Roles</a></li>
             <li class="breadcrumb-item active">Rol</li>
         </ol>';
 
         $params = [
             'id' => $id,
             'path' => $this->path,
+            'userpath' => url($this->userPath),
         ];
 
         return view('component')
@@ -128,7 +146,7 @@ class RolesController extends CrudController
                 $roleid = $id;
                 $role = Role::findOrFail($roleid);
 
-                //Authrolmodulopermiso::where('roleid', $roleid)->delete();
+                // Authrolmodulopermiso::where('roleid', $roleid)->delete();
             } else {
                 $role = new Role();
             }
