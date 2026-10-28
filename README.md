@@ -65,9 +65,20 @@ The `deploy` job is project-specific (host, Docker, Octane, etc.). Configure the
 | `PRODUCTION_SSH_KNOWN_HOSTS`  | no       | Pinned host key; prevents MITM (falls back to keyscan)  |
 | `PRODUCTION_HEALTHCHECK_URL`  | no       | URL checked after deploy; deploy fails if not HTTP 200  |
 
+A one time permissions configuration must be added to the server to fix permission issues when pulling and creating git folders, replacing {PRODUCTION_USER} with the deploy user and {PRODUCTION_PATH} with the real production path (ex: /var/docker/project)
+```
+P={PRODUCTION_PATH}   
+U={PRODUCTION_USER}
+
+sudo usermod -aG www-data "$U"
+sudo find "$P" -path "$P/.git" -prune -o -exec chgrp www-data {} +
+sudo find "$P" -path "$P/.git" -prune -o -type d -exec chmod g+rwxs {} +
+sudo find "$P" -path "$P/.git" -prune -o -type f -exec chmod g+rw {} +
+```
 CI runs are cancelled when superseded by a newer commit, but deployments are never cancelled mid-flight (concurrent pushes queue) to avoid leaving the server half-migrated.
 
 After migrating, the deploy runs `db:seed --force` and then `db:seed --class=GodSeeder --force` (the latter only when `database/seeders/GodSeeder.php` exists). The ACL — modules, permissions and menu — is generated from the seeders, so without this step new permissions never reach production even though the migrations do. This is safe to repeat because CSGT seeders rebuild derived data (clear then insert, or `updateOrInsert`). **If a project adds a seeder with business data, guard it or keep it out of `DatabaseSeeder`**, otherwise it re-runs on every deploy.
+
 
 ## Docker environment
 
