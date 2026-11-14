@@ -66,10 +66,14 @@ The `deploy` job is project-specific (host, Docker, Octane, etc.). Configure the
 | `PRODUCTION_HEALTHCHECK_URL`  | no       | URL checked after deploy; deploy fails if not HTTP 200  |
 
 A one time permissions configuration must be added to the server to fix permission issues when pulling and creating git folders, replacing {PRODUCTION_USER} with the deploy user and {PRODUCTION_PATH} with the real production path (ex: /var/docker/project)
+If the nginx user is not www-data, use `getent group nginx apache www-data` to find out if you need to use nginx, apache or www-data
+Define the variables
 ```
 P={PRODUCTION_PATH}   
 U={PRODUCTION_USER}
-
+```
+and run the commands
+```
 sudo usermod -aG www-data "$U"
 sudo find "$P" -path "$P/.git" -prune -o -exec chgrp www-data {} +
 sudo find "$P" -path "$P/.git" -prune -o -type d -exec chmod g+rwxs {} +
