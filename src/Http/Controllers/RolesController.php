@@ -25,6 +25,10 @@ class RolesController extends CrudController
     {
         $this->setModel(new Role());
         $this->setTitle('Roles');
+        $this->setBreadCrumb([
+            ['url' => '', 'title' => 'Catálogos', 'icon' => 'fa fa-book'],
+            ['url' => '', 'title' => 'Roles', 'icon' => 'fa fa-key'],
+        ]);
         $this->setField(['name' => 'Nombre', 'field' => 'name']);
         $this->setField(['name' => 'Descripción', 'field' => 'description']);
         $this->setField([
@@ -102,7 +106,7 @@ class RolesController extends CrudController
 
     public function edit(Request $request, $id)
     {
-        $breadcrumb = '<ol class="breadcrumb float-sm-end">
+        $breadcrumb = '<ol class="breadcrumb float-sm-right float-sm-end">
             <li class="breadcrumb-item">Catálogos</li>
             <li class="breadcrumb-item"><a href="'.$this->path.'">Roles</a></li>
             <li class="breadcrumb-item active">Rol</li>
