@@ -74,6 +74,7 @@ U={PRODUCTION_USER}
 ```
 and run the commands
 ```
+sudo usermod -aG docker "$U"
 sudo usermod -aG www-data "$U"
 sudo find "$P" -path "$P/.git" -prune -o -exec chgrp www-data {} +
 sudo find "$P" -path "$P/.git" -prune -o -type d -exec chmod g+rwxs {} +
