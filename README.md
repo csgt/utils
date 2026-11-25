@@ -65,21 +65,23 @@ The `deploy` job is project-specific (host, Docker, Octane, etc.). Configure the
 | `PRODUCTION_SSH_KNOWN_HOSTS`  | no       | Pinned host key; prevents MITM (falls back to keyscan)  |
 | `PRODUCTION_HEALTHCHECK_URL`  | no       | URL checked after deploy; deploy fails if not HTTP 200  |
 
-A one time permissions configuration must be added to the server to fix permission issues when pulling and creating git folders, replacing {PRODUCTION_USER} with the deploy user and {PRODUCTION_PATH} with the real production path (ex: /var/docker/project)
-If the nginx user is not www-data, use `getent group nginx apache www-data` to find out if you need to use nginx, apache or www-data
-Define the variables
-```
-P={PRODUCTION_PATH}   
-U={PRODUCTION_USER}
-```
-and run the commands
-```
+Run this one-time permissions setup on the production host before the first deployment. Set `P` to `PRODUCTION_PATH` and `U` to `PRODUCTION_USER`. Set `G` to the web server's group. Use `getent group nginx apache www-data` to check the available groups.
+
+```bash
+P=/var/docker/project
+U=loginuser
+G=www-data/nginx
+
 sudo usermod -aG docker "$U"
-sudo usermod -aG www-data "$U"
-sudo find "$P" -path "$P/.git" -prune -o -exec chgrp www-data {} +
+sudo usermod -aG "$G" "$U"
+sudo chown -R "$U:$(id -gn "$U")" "$P/.git"
+sudo find "$P" -path "$P/.git" -prune -o -exec chgrp "$G" {} +
 sudo find "$P" -path "$P/.git" -prune -o -type d -exec chmod g+rwxs {} +
 sudo find "$P" -path "$P/.git" -prune -o -type f -exec chmod g+rw {} +
 ```
+
+Open a new SSH session as the deploy user to pick up the group membership changes. The generated workflow uses these host permissions for subsequent deployments. For an existing project, regenerate `.github/workflows/ci.yml` with `php artisan make:csgtci --force` and reapply any project-specific edits before committing it.
+
 CI runs are cancelled when superseded by a newer commit, but deployments are never cancelled mid-flight (concurrent pushes queue) to avoid leaving the server half-migrated.
 
 After migrating, the deploy runs `db:seed --force` and then `db:seed --class=GodSeeder --force` (the latter only when `database/seeders/GodSeeder.php` exists). The ACL — modules, permissions and menu — is generated from the seeders, so without this step new permissions never reach production even though the migrations do. This is safe to repeat because CSGT seeders rebuild derived data (clear then insert, or `updateOrInsert`). **If a project adds a seeder with business data, guard it or keep it out of `DatabaseSeeder`**, otherwise it re-runs on every deploy.

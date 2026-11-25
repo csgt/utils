@@ -77,42 +77,15 @@ class MakeCiCommandTest extends TestCase
         $this->assertStringNotContainsString('DB_DATABASE: ci_testing', $deploy);
     }
 
-    public function test_only_the_git_folder_ownership_is_repaired()
+    public function test_the_deploy_uses_host_configured_ownership()
     {
         $this->artisan('make:csgtci', ['--branch' => 'main'])->assertExitCode(0);
         $workflow = file_get_contents(base_path('.github/workflows/ci.yml'));
-        $start = strpos($workflow, '          ensure_repository_owner()');
-        $end = strpos($workflow, '          configure_docker_compose()', $start);
-        $functions = substr($workflow, $start, $end - $start);
+        [, $deploy] = explode("\n  deploy:", $workflow, 2);
 
-        $this->assertStringContainsString('chown -R "$expected_owner" "$PRODUCTION_PATH/.git"', $functions);
-        $this->assertStringNotContainsString('chown -R "$expected_owner" "$PRODUCTION_PATH"', $functions);
-
-        // Execute the generated shell, with sudo simulated for an unprivileged fixture.
-        $script = <<<'BASH'
-set -euo pipefail
-PRODUCTION_PATH=$(mktemp -d)
-trap 'chmod -R u+rwx "$PRODUCTION_PATH"; rm -rf "$PRODUCTION_PATH"' EXIT
-mkdir -p "$PRODUCTION_PATH/.git"
-touch "$PRODUCTION_PATH/.git/FETCH_HEAD"
-sudo() {
-  echo "$*" >> "$PRODUCTION_PATH/sudo.log"
-}
-BASH;
-        $script .= "\n" . $functions . <<<'BASH'
-
-# Writable .git and FETCH_HEAD must not invoke sudo.
-ensure_repository_owner
-[ ! -e "$PRODUCTION_PATH/sudo.log" ]
-# A read-only FETCH_HEAD triggers a repair limited to the .git folder.
-chmod 400 "$PRODUCTION_PATH/.git/FETCH_HEAD"
-ensure_repository_owner
-grep -F -- "-n chown -R $(id -u):$(id -g) $PRODUCTION_PATH/.git" "$PRODUCTION_PATH/sudo.log"
-BASH;
-        $process = new \Symfony\Component\Process\Process(['bash', '-c', $script]);
-        $process->run();
-
-        $this->assertSame(0, $process->getExitCode(), $process->getOutput() . $process->getErrorOutput());
+        $this->assertStringNotContainsString('chown ', $deploy);
+        $this->assertStringNotContainsString('chgrp ', $deploy);
+        $this->assertStringContainsString('git fetch origin "$DEPLOY_BRANCH"', $deploy);
     }
 
     public function test_it_refuses_to_overwrite_without_force()

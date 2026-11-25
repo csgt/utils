@@ -245,17 +245,6 @@ jobs:
             export GIT_SSH_COMMAND
           }
 
-          ensure_repository_owner() {
-            expected_owner="$(id -u):$(id -g)"
-
-            if [ -w "$PRODUCTION_PATH/.git" ] && { [ ! -e "$PRODUCTION_PATH/.git/FETCH_HEAD" ] || [ -w "$PRODUCTION_PATH/.git/FETCH_HEAD" ]; }; then
-              return
-            fi
-
-            # Only the .git folder is repaired; application files are left untouched.
-            sudo -n chown -R "$expected_owner" "$PRODUCTION_PATH/.git"
-          }
-
           configure_docker_compose() {
             if docker info >/dev/null 2>&1; then
               DOCKER_COMPOSE=(docker compose)
@@ -341,7 +330,6 @@ jobs:
           trap on_error ERR
 
           cd "$PRODUCTION_PATH"
-          ensure_repository_owner
           ensure_git_safe_directory
           ensure_github_known_hosts
           configure_docker_compose
